@@ -1,3 +1,4 @@
+
 # OTel Multi-Source Correlation Engine Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -16,7 +17,7 @@
 
 ## Phases
 
-- **Phase 0** — Workspace bootstrap (3 tasks)
+- **Phase 0** — Workspace bootstrap + CI scaffolding (8 tasks)
 - **Phase 1** — Foundation: services + telemetry + Compose (28 tasks)
 - **Phase 2** — `correlation-core` library (16 tasks)
 - **Phase 3** — Backend adapters: Tempo / Loki / Prom (10 tasks)
@@ -27,6 +28,101 @@
 - **Phase 8** — End-to-end + reproducibility canaries (6 tasks)
 
 Each phase ends with a **checkpoint** task that runs the new artifacts end-to-end and verifies the phase output exists.
+
+---
+
+# Branching, PRs, and CI Pipeline
+
+This section establishes the workflow used throughout the plan. Every task in Phases 1–8 commits onto a phase branch, the phase branch opens a draft PR early, CI gates the merge, and the PR merges into `main` at the phase checkpoint.
+
+## Branching strategy
+
+**Branch per phase, atomic commits per task.** Each phase is one feature branch off `main`. Within a branch, every task ends with its own commit — that discipline is already baked into the plan's commit steps. The branch is opened as a *draft PR* within the first one or two tasks so CI runs against it from day one and progress is visible.
+
+| Phase | Branch | Merge gate |
+|---|---|---|
+| 0 | `bootstrap/workspace`         | After Task 0.8 |
+| 1 | `phase/1-foundation`          | After Task 1.26 (split if it grows past ~30 commits; natural seam is 1.16↔1.17) |
+| 2 | `phase/2-engine-core`         | After Task 2.16 |
+| 3 | `phase/3-adapters`            | After Task 3.7 |
+| 4 | `phase/4-shells`              | After Task 4.5 |
+| 5 | `phase/5-chaos`               | After Task 5.7 |
+| 6 | `phase/6-runner`              | After Task 6.8 |
+| 7 | `phase/7-eval`                | After Task 7.14 |
+| 8 | `phase/8-canaries`            | After Task 8.6; tag `v0.1.0` from `main` |
+
+**Merge-commits, not squash.** The atomic per-task commit history is the research narrative — squashing destroys that. Use `--no-ff` merges so phase branches remain visible on the graph.
+
+**Never force-push `main`.** Topic branches can be force-pushed by their owner.
+
+### Why not stacked PRs or PR-per-task?
+
+For a solo research project with ~80 tasks, PR-per-task is 80 reviews of trivial diffs (most tasks are 5-line edits sandwiched between a test and a commit). Stacked PRs help when multiple devs review in parallel — not applicable here. Branch-per-phase + atomic commits inside is the sweet spot: phases are reviewable chunks, history stays granular.
+
+If a phase ever needs collaboration mid-flight, the branch can be split into a stack at any task boundary without restructuring.
+
+## Commit conventions
+
+Conventional commits, already evident in every commit step in this plan:
+
+| Prefix | When |
+|---|---|
+| `feat(<scope>):` | New functionality |
+| `fix(<scope>):` | Bug fix |
+| `test(<scope>):` | Tests only |
+| `chore:` | Workspace / tooling |
+| `build(<scope>):` | Dockerfile / Cargo.toml changes |
+| `docs:` | Documentation |
+| `ci:` | CI changes |
+| `compose:` | Docker Compose changes |
+| `data:` | Fixture / experiment YAML changes |
+
+A `Co-Authored-By:` trailer is appended when commits are made via the `commit-commands:commit` skill or by an agentic worker.
+
+## CI pipeline overview
+
+Five workflows, two trigger tiers. The first three are required to merge; the last two are informational nightly canaries.
+
+| Workflow | Trigger | Duration target | Required for merge? | Defined in |
+|---|---|---|---|---|
+| `unit.yml`       | every push to PR + main         | < 5 min           | **yes** | Task 0.2 |
+| `snapshot.yml`   | every push to PR + main         | < 3 min           | **yes** | Task 0.7 |
+| `property.yml`   | every push (short), nightly (long) | < 4 min short, < 20 min long | **yes** (short) | Task 0.8 + Task 8.3 |
+| `e2e.yml`        | nightly + workflow_dispatch     | < 30 min          | no (informational) | Task 8.3 |
+| `reproduce.yml`  | nightly + workflow_dispatch     | < 20 min          | no (informational) | Task 8.3 |
+
+`unit + snapshot + property-short` are the **merge gate**. e2e and reproduce surface regressions but don't block merging — they need Compose-up and can be flaky in shared CI environments. A nightly red signal triggers an investigation but not an automatic revert.
+
+All workflows share:
+- `permissions: contents: read` (least privilege)
+- `concurrency: { group: ${{ github.workflow }}-${{ github.ref }}, cancel-in-progress: true }` (cancel in-flight on rebase)
+- `Swatinem/rust-cache@v2` for cargo cache
+- Pinned `dtolnay/rust-toolchain@<sha>` (Dependabot keeps it current — see Task 0.5)
+
+## Branch protection on `main`
+
+Configured via the GitHub UI or `gh api` (see Task 0.6 for the exact commands):
+
+- Require status checks to pass: `unit`, `snapshot`, `property`
+- Require branches to be up to date before merging
+- Disable force-push
+- Disable deletion
+- Allow merge-commits; disable squash and rebase merging (preserves topic-branch shape)
+- Allow self-review for solo work; require 1 review later if a collaborator joins
+
+## PR template checklist
+
+Every PR (see Task 0.4 for the template file) carries this pre-merge checklist:
+
+- [ ] All new tasks committed atomically (one commit per task)
+- [ ] `cargo test --workspace` green locally
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings` clean
+- [ ] Snapshot diffs reviewed with `cargo insta review`; no `.snap.new` files remain
+- [ ] Linked spec section(s) — `§N`
+- [ ] Linked plan task(s) — checkboxes ticked in the plan doc
+- [ ] No new `SystemTime::now()` call in `correlation-core` (determinism)
+- [ ] New dependencies justified in PR body
+- [ ] If new YAML scenario added: `ground_truth` fields complete; `failure_class` is in the spec enum
 
 ---
 
@@ -121,12 +217,17 @@ git commit -m "chore: initialize cargo workspace and shared deps"
 ```yaml
 name: unit
 on:
-  push:
-    branches: [main]
+  push: { branches: [main] }
   pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: unit-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -178,6 +279,275 @@ for the implementation plan.
 git add README.md
 git commit -m "docs: point README at spec and plan"
 ```
+
+### Task 0.4: Pull request template
+
+**Files:** Create `.github/pull_request_template.md`
+
+- [ ] **Step 1: Create template**
+
+```markdown
+## Summary
+<!-- 1-3 bullets: what changed and why. Link the phase. -->
+
+## Spec / plan references
+- Spec: §<N>
+- Plan tasks: <list of Task N.M>
+
+## Pre-merge checklist
+- [ ] All new tasks committed atomically (one commit per task)
+- [ ] `cargo test --workspace` green locally
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings` clean
+- [ ] Snapshot diffs reviewed with `cargo insta review`; no `.snap.new` files remain
+- [ ] No new `SystemTime::now()` call inside `correlation-core` (determinism)
+- [ ] New dependencies justified below
+- [ ] If a new scenario YAML was added: `ground_truth` complete and `failure_class` in the spec enum
+- [ ] Plan task checkboxes ticked in `docs/superpowers/plans/2026-05-23-otel-correlation-engine.md`
+
+## Notes for reviewer
+<!-- Anything non-obvious: design tradeoff, deferred TODO, snapshot intent, etc. -->
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add .github/pull_request_template.md
+git commit -m "ci: PR template with merge checklist"
+```
+
+### Task 0.5: Dependabot configuration
+
+**Files:** Create `.github/dependabot.yml`
+
+- [ ] **Step 1: Create config**
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      otel: { patterns: ["opentelemetry*", "tracing-opentelemetry"] }
+      sqlx: { patterns: ["sqlx*"] }
+      axum: { patterns: ["axum", "tower*"] }
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: docker
+    directory: "/crates/services/auth"
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: "/crates/services/accounts"
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: "/crates/services/transactions"
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: "/crates/services/notifications"
+    schedule: { interval: monthly }
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add .github/dependabot.yml
+git commit -m "ci: dependabot for cargo, actions, and service Dockerfiles"
+```
+
+### Task 0.6: Branch protection documentation
+
+Branch protection rules can't be committed as files — they live in the repo settings. This task documents the required configuration and provides the `gh` CLI commands to apply it, so the project is reproducible end-to-end.
+
+**Files:** Create `docs/operations/branch-protection.md`
+
+- [ ] **Step 1: Create the doc**
+
+```markdown
+# Branch protection on `main`
+
+These rules MUST be set on the GitHub repository before the first phase merges.
+Apply via the UI (Settings → Branches → Add rule) or via `gh` CLI as shown.
+
+## Required settings
+
+| Setting | Value |
+|---|---|
+| Require pull request before merging | enabled |
+| Require approvals | 0 (solo) — set to 1 once a collaborator joins |
+| Require status checks to pass | enabled |
+| Required checks | `unit`, `snapshot`, `property` |
+| Require branches to be up to date | enabled |
+| Require linear history | **disabled** (we use merge-commits) |
+| Allow force pushes | disabled |
+| Allow deletions | disabled |
+| Allowed merge types | merge-commit only (disable squash + rebase) |
+
+## Apply via gh CLI
+
+    OWNER=<your-org-or-user>
+    REPO=OpenTelemetry-Multi-Source-Correlation-Engine
+
+    gh api -X PUT "repos/$OWNER/$REPO/branches/main/protection" \
+      --input - <<'JSON'
+    {
+      "required_status_checks": {
+        "strict": true,
+        "checks": [
+          { "context": "unit"     },
+          { "context": "snapshot" },
+          { "context": "property" }
+        ]
+      },
+      "enforce_admins": false,
+      "required_pull_request_reviews": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews": true
+      },
+      "restrictions": null,
+      "allow_force_pushes": false,
+      "allow_deletions": false,
+      "required_linear_history": false
+    }
+    JSON
+
+    gh api -X PATCH "repos/$OWNER/$REPO" \
+      -f allow_merge_commit=true \
+      -f allow_squash_merge=false \
+      -f allow_rebase_merge=false
+
+## Verifying
+
+    gh api "repos/$OWNER/$REPO/branches/main/protection" | jq '{
+      required_checks: .required_status_checks.checks,
+      strict: .required_status_checks.strict,
+      force_pushes: .allow_force_pushes.enabled,
+      linear_history: .required_linear_history.enabled
+    }'
+
+Expected: required_checks = [unit, snapshot, property], strict = true,
+force_pushes = false, linear_history = false.
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add docs/operations/branch-protection.md
+git commit -m "docs(ops): branch protection settings + gh CLI recipe"
+```
+
+- [ ] **Step 3: Apply the rules** (one-time, not part of the commit)
+
+Follow the `gh api` commands in the doc. This is a one-shot manual step; not all GitHub configuration is in-repo.
+
+### Task 0.7: `snapshot.yml` CI workflow (merge gate)
+
+**Files:** Create `.github/workflows/snapshot.yml`
+
+- [ ] **Step 1: Create workflow**
+
+```yaml
+name: snapshot
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: snapshot-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  insta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-insta
+        run: cargo install --locked cargo-insta
+      - name: Verify snapshots
+        env: { INSTA_UPDATE: "no" }   # fail on any unreviewed diff
+        run: cargo insta test --workspace --unreferenced=reject
+```
+
+- [ ] **Step 2: Validate**
+
+Run: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/snapshot.yml'))"`
+Expected: exit 0.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add .github/workflows/snapshot.yml
+git commit -m "ci: snapshot workflow gates unreviewed insta diffs"
+```
+
+### Task 0.8: `property.yml` CI workflow (merge gate, short cases)
+
+**Files:** Create `.github/workflows/property.yml`
+
+- [ ] **Step 1: Create workflow**
+
+```yaml
+name: property
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: property-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  proptest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PROPTEST_CASES: "64"    # short variant for merge gate; nightly bumps this
+      PROPTEST_MAX_SHRINK_ITERS: "256"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run property tests
+        run: cargo test --workspace --release properties
+```
+
+Task 8.3 extends this workflow with a nightly variant that raises `PROPTEST_CASES` significantly.
+
+- [ ] **Step 2: Validate**
+
+Run: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/property.yml'))"`
+Expected: exit 0.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add .github/workflows/property.yml
+git commit -m "ci: property workflow with short cases as merge gate"
+```
+
+### Phase 0 checkpoint
+
+- [ ] **Step 1: Workspace parses** — `cargo metadata --format-version 1 > /dev/null`.
+- [ ] **Step 2: Workflows valid** — `python3 -c "import yaml; [yaml.safe_load(open(p)) for p in __import__('glob').glob('.github/workflows/*.yml')]"`.
+- [ ] **Step 3: Open the first PR.** Phase 1 work happens on `phase/1-foundation`; the `bootstrap/workspace` branch merges to main first.
+
+```bash
+git checkout -b bootstrap/workspace
+git push -u origin bootstrap/workspace
+gh pr create --draft --title "bootstrap: workspace + CI scaffolding (Phase 0)" \
+  --body "Phase 0 of the plan. Merge gate: unit + snapshot + property green."
+```
+
+After Tasks 0.1–0.8 are committed and CI is green, mark the PR ready and merge.
+
+- [ ] **Step 4: Tag `phase-0-bootstrap` on main after merge.**
 
 ---
 
@@ -6145,50 +6515,71 @@ git add tests/
 git commit -m "test(e2e): one_experiment_full_loop covers runner + harness"
 ```
 
-### Task 8.3: Nightly CI workflows
+### Task 8.3: Nightly CI workflows (extends existing + adds e2e/reproduce)
 
-**Files:** `.github/workflows/{snapshot.yml,property.yml,e2e.yml,reproduce.yml}`
+**Files:**
+- Modify: `.github/workflows/property.yml` (add nightly schedule with higher case count)
+- Create: `.github/workflows/e2e.yml`
+- Create: `.github/workflows/reproduce.yml`
 
-- [ ] **Step 1: Create each workflow**
+`snapshot.yml` was created in Task 0.7 (merge gate, no nightly variant — schema stability is a hard gate, not a periodic check).
 
-`snapshot.yml`:
-```yaml
-name: snapshot
-on: [push, pull_request]
-jobs:
-  insta:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo install --locked cargo-insta || true
-      - run: cargo insta test --workspace
-```
+`property.yml` was created in Task 0.8 with `PROPTEST_CASES=64` for the merge gate. Step 1 below extends it with a nightly job that raises the case count.
 
-`property.yml`:
+- [ ] **Step 1: Extend `property.yml` with nightly job**
+
+Replace `property.yml` with:
+
 ```yaml
 name: property
 on:
   push: { branches: [main] }
+  pull_request:
   schedule: [{ cron: "0 5 * * *" }]
+permissions:
+  contents: read
+concurrency:
+  group: property-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
-  proptest:
+  proptest-gate:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    env: { PROPTEST_CASES: "256" }
+    timeout-minutes: 15
+    env:
+      PROPTEST_CASES: "64"
+      PROPTEST_MAX_SHRINK_ITERS: "256"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --release -- --ignored-property false
+      - run: cargo test --workspace --release properties
+
+  proptest-nightly:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PROPTEST_CASES: "4096"
+      PROPTEST_MAX_SHRINK_ITERS: "8192"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --release properties
 ```
 
-`e2e.yml`:
+The merge-gate job's name stays `proptest-gate`; required-checks in branch protection (Task 0.6) reference the workflow name `property`, which covers both jobs — branch protection passes as soon as `proptest-gate` succeeds.
+
+- [ ] **Step 2: Create `e2e.yml`**
+
 ```yaml
 name: e2e
 on:
   workflow_dispatch:
   schedule: [{ cron: "0 6 * * *" }]
+permissions:
+  contents: read
 jobs:
   full-stack:
     runs-on: ubuntu-latest
@@ -6203,15 +6594,19 @@ jobs:
         run: docker compose -f compose/docker-compose.yaml --profile research down -v
 ```
 
-`reproduce.yml`:
+- [ ] **Step 3: Create `reproduce.yml`**
+
 ```yaml
 name: reproduce
 on:
   workflow_dispatch:
   schedule: [{ cron: "30 6 * * *" }]
+permissions:
+  contents: read
 jobs:
   canary:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -6225,11 +6620,14 @@ jobs:
         run: docker compose -f compose/docker-compose.yaml --profile research down -v
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 4: Validate + commit**
+
+Run: `python3 -c "import yaml,glob; [yaml.safe_load(open(p)) for p in glob.glob('.github/workflows/*.yml')]"`
+Expected: exit 0.
 
 ```bash
 git add .github/workflows/
-git commit -m "ci: snapshot + property + e2e + reproduce workflows"
+git commit -m "ci: nightly e2e + reproduce; nightly variant of property"
 ```
 
 ### Task 8.4: Provision a default Grafana dashboard
