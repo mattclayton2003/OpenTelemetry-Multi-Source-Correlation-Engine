@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      otel: { patterns: ["opentelemetry*", "tracing-opentelemetry"] }
+      sqlx: { patterns: ["sqlx*"] }
+      axum: { patterns: ["axum", "tower*"] }
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: docker
+    directory: "/crates/services/auth"
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: "/crates/services/accounts"
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: "/crates/services/transactions"
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: "/crates/services/notifications"
+    schedule: { interval: monthly }
