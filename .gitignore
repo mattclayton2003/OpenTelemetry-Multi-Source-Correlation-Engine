@@ -29,3 +29,11 @@ TestResults.xml
 /results
 *.snap.new
 .DS_Store
+
+# IDE local config
+.idea/
+
+# Ruflo runtime state (memory.db, coordination, vectors)
+.swarm/
+.claude-flow/
+ruvector.db
