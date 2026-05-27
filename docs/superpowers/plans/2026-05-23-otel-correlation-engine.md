@@ -39,17 +39,17 @@ This section establishes the workflow used throughout the plan. Every task in Ph
 
 **Branch per phase, atomic commits per task.** Each phase is one feature branch off `main`. Within a branch, every task ends with its own commit — that discipline is already baked into the plan's commit steps. The branch is opened as a *draft PR* within the first one or two tasks so CI runs against it from day one and progress is visible.
 
-| Phase | Branch | Merge gate |
-|---|---|---|
-| 0 | `bootstrap/workspace`         | After Task 0.8 |
-| 1 | `phase/1-foundation`          | After Task 1.26 (split if it grows past ~30 commits; natural seam is 1.16↔1.17) |
-| 2 | `phase/2-engine-core`         | After Task 2.16 |
-| 3 | `phase/3-adapters`            | After Task 3.7 |
-| 4 | `phase/4-shells`              | After Task 4.5 |
-| 5 | `phase/5-chaos`               | After Task 5.7 |
-| 6 | `phase/6-runner`              | After Task 6.8 |
-| 7 | `phase/7-eval`                | After Task 7.14 |
-| 8 | `phase/8-canaries`            | After Task 8.6; tag `v0.1.0` from `main` |
+| Phase | Branch                | Merge gate                                                                      |
+|-------|-----------------------|---------------------------------------------------------------------------------|
+| 0     | `bootstrap/workspace` | After Task 0.8                                                                  |
+| 1     | `phase/1-foundation`  | After Task 1.26 (split if it grows past ~30 commits; natural seam is 1.16↔1.17) |
+| 2     | `phase/2-engine-core` | After Task 2.16                                                                 |
+| 3     | `phase/3-adapters`    | After Task 3.7                                                                  |
+| 4     | `phase/4-shells`      | After Task 4.5                                                                  |
+| 5     | `phase/5-chaos`       | After Task 5.7                                                                  |
+| 6     | `phase/6-runner`      | After Task 6.8                                                                  |
+| 7     | `phase/7-eval`        | After Task 7.14                                                                 |
+| 8     | `phase/8-canaries`    | After Task 8.6; tag `v0.1.0` from `main`                                        |
 
 **Merge-commits, not squash.** The atomic per-task commit history is the research narrative — squashing destroys that. Use `--no-ff` merges so phase branches remain visible on the graph.
 
@@ -65,17 +65,17 @@ If a phase ever needs collaboration mid-flight, the branch can be split into a s
 
 Conventional commits, already evident in every commit step in this plan:
 
-| Prefix | When |
-|---|---|
-| `feat(<scope>):` | New functionality |
-| `fix(<scope>):` | Bug fix |
-| `test(<scope>):` | Tests only |
-| `chore:` | Workspace / tooling |
-| `build(<scope>):` | Dockerfile / Cargo.toml changes |
-| `docs:` | Documentation |
-| `ci:` | CI changes |
-| `compose:` | Docker Compose changes |
-| `data:` | Fixture / experiment YAML changes |
+| Prefix            | When                              |
+|-------------------|-----------------------------------|
+| `feat(<scope>):`  | New functionality                 |
+| `fix(<scope>):`   | Bug fix                           |
+| `test(<scope>):`  | Tests only                        |
+| `chore:`          | Workspace / tooling               |
+| `build(<scope>):` | Dockerfile / Cargo.toml changes   |
+| `docs:`           | Documentation                     |
+| `ci:`             | CI changes                        |
+| `compose:`        | Docker Compose changes            |
+| `data:`           | Fixture / experiment YAML changes |
 
 A `Co-Authored-By:` trailer is appended when commits are made via the `commit-commands:commit` skill or by an agentic worker.
 
@@ -83,13 +83,13 @@ A `Co-Authored-By:` trailer is appended when commits are made via the `commit-co
 
 Five workflows, two trigger tiers. The first three are required to merge; the last two are informational nightly canaries.
 
-| Workflow | Trigger | Duration target | Required for merge? | Defined in |
-|---|---|---|---|---|
-| `unit.yml`       | every push to PR + main         | < 5 min           | **yes** | Task 0.2 |
-| `snapshot.yml`   | every push to PR + main         | < 3 min           | **yes** | Task 0.7 |
-| `property.yml`   | every push (short), nightly (long) | < 4 min short, < 20 min long | **yes** (short) | Task 0.8 + Task 8.3 |
-| `e2e.yml`        | nightly + workflow_dispatch     | < 30 min          | no (informational) | Task 8.3 |
-| `reproduce.yml`  | nightly + workflow_dispatch     | < 20 min          | no (informational) | Task 8.3 |
+| Workflow        | Trigger                            | Duration target              | Required for merge? | Defined in          |
+|-----------------|------------------------------------|------------------------------|---------------------|---------------------|
+| `unit.yml`      | every push to PR + main            | < 5 min                      | **yes**             | Task 0.2            |
+| `snapshot.yml`  | every push to PR + main            | < 3 min                      | **yes**             | Task 0.7            |
+| `property.yml`  | every push (short), nightly (long) | < 4 min short, < 20 min long | **yes** (short)     | Task 0.8 + Task 8.3 |
+| `e2e.yml`       | nightly + workflow_dispatch        | < 30 min                     | no (informational)  | Task 8.3            |
+| `reproduce.yml` | nightly + workflow_dispatch        | < 20 min                     | no (informational)  | Task 8.3            |
 
 `unit + snapshot + property-short` are the **merge gate**. e2e and reproduce surface regressions but don't block merging — they need Compose-up and can be flaky in shared CI environments. A nightly red signal triggers an investigation but not an automatic revert.
 
