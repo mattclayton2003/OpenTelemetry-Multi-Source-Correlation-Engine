@@ -1,0 +1,22 @@
+name: snapshot
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: snapshot-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  insta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-insta
+        run: cargo install --locked cargo-insta
+      - name: Verify snapshots
+        env: { INSTA_UPDATE: "no" }
+        run: cargo insta test --workspace --unreferenced=reject
