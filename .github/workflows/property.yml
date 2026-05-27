@@ -1,0 +1,22 @@
+name: property
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: property-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  proptest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PROPTEST_CASES: "64"
+      PROPTEST_MAX_SHRINK_ITERS: "256"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run property tests
+        run: cargo test --workspace --release properties

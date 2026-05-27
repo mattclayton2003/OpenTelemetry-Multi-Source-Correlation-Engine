@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = []
+
+[workspace.package]
+edition      = "2021"
+rust-version = "1.78"
+license      = "MIT"
+
+[workspace.dependencies]
+tokio                 = { version = "1", features = ["full"] }
+axum                  = "0.7"
+reqwest               = { version = "0.12", features = ["json", "rustls-tls"] }
+serde                 = { version = "1", features = ["derive"] }
+serde_json            = "1"
+opentelemetry         = "0.24"
+opentelemetry_sdk     = { version = "0.24", features = ["rt-tokio"] }
+opentelemetry-otlp    = { version = "0.17", features = ["grpc-tonic"] }
+tracing               = "0.1"
+tracing-subscriber    = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.25"
+sqlx                  = { version = "0.8", features = ["runtime-tokio", "sqlite", "postgres", "chrono"] }
+async-trait           = "0.1"
+thiserror             = "1"
+anyhow                = "1"
+uuid                  = { version = "1", features = ["v7", "serde"] }
+indexmap              = { version = "2", features = ["serde"] }
+prometheus            = "0.13"
+toml                  = "0.8"
+chrono                = { version = "0.4", features = ["serde"] }
+jsonwebtoken          = "9"
+
+[workspace.dev-dependencies]
+insta                 = { version = "1", features = ["json", "yaml"] }
+proptest              = "1"
+wiremock              = "0.6"
+testcontainers        = "0.21"
