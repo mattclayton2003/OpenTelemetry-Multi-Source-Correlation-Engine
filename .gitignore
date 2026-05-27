@@ -25,3 +25,7 @@ TestResults.xml
 # Swarm runtime artifacts (logs, runtime state)
 /data
 
+/target
+/results
+*.snap.new
+.DS_Store
