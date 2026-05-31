@@ -1,0 +1,29 @@
+id: payment-storm-001
+description: SMTP latency under transaction load.
+duration_sec: 180
+warmup_sec: 30
+cooldown_sec: 60
+recovery_grace_sec: 20
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://transactions:8003/transactions
+      rps: 200
+      duration_sec: 120
+      body: { from: "a1", to: "a2", amount: 100 }
+faults:
+  - at_sec: 45
+    until_sec: 135
+    kind: toxiproxy
+    proxy: smtp-fake
+    toxic:
+      name: smtp-latency
+      type: latency
+      stream: downstream
+      toxicity: 1.0
+      attributes: { latency: 800, jitter: 150 }
+ground_truth:
+  primary_faulted_service: notifications
+  expected_blast_radius: [transactions]
+  expected_clean_services: [auth]
+  failure_class: dependency_latency

@@ -1,0 +1,29 @@
+id: accounts-db-down-001
+description: Toxiproxy cuts postgres entirely.
+duration_sec: 120
+warmup_sec: 20
+cooldown_sec: 60
+recovery_grace_sec: 20
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://accounts:8002/accounts
+      rps: 50
+      duration_sec: 90
+      body: { owner: "alice" }
+faults:
+  - at_sec: 20
+    until_sec: 80
+    kind: toxiproxy
+    proxy: postgres
+    toxic:
+      name: pg-down
+      type: bandwidth
+      stream: downstream
+      toxicity: 1.0
+      attributes: { rate: 0 }
+ground_truth:
+  primary_faulted_service: accounts
+  expected_blast_radius: [transactions]
+  expected_clean_services: [auth, notifications]
+  failure_class: dependency_outage

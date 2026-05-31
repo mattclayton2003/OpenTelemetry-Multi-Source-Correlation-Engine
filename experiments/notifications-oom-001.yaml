@@ -1,0 +1,25 @@
+id: notifications-oom-001
+description: Pumba memory stress on notifications container.
+duration_sec: 120
+warmup_sec: 20
+cooldown_sec: 60
+recovery_grace_sec: 20
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://notifications:8004/notify
+      rps: 80
+      duration_sec: 90
+      body: { user: "alice", message: "test" }
+faults:
+  - at_sec: 20
+    until_sec: 80
+    kind: pumba_stress
+    container: notifications
+    cpus: 1
+    duration_sec: 60
+ground_truth:
+  primary_faulted_service: notifications
+  expected_blast_radius: [transactions]
+  expected_clean_services: [auth, accounts]
+  failure_class: memory_pressure
