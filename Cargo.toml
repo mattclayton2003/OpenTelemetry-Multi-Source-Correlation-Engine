@@ -3,6 +3,9 @@ resolver = "2"
 members = [
     "crates/bank-common",
     "crates/correlation-core",
+    "crates/correlation-tempo",
+    "crates/correlation-loki",
+    "crates/correlation-prom",
     "crates/services/auth",
     "crates/services/accounts",
     "crates/services/transactions",
