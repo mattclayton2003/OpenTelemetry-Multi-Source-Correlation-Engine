@@ -6,6 +6,8 @@ members = [
     "crates/correlation-tempo",
     "crates/correlation-loki",
     "crates/correlation-prom",
+    "crates/correlation-cli",
+    "crates/correlation-http",
     "crates/services/auth",
     "crates/services/accounts",
     "crates/services/transactions",
