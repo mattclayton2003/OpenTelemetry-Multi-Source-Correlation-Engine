@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      retries: 30
+
+  smtp-fake:
+    image: rnwood/smtp4dev:latest
+    ports: ["3000:80"]
+
+  auth:
+    build: { context: .., dockerfile: crates/services/auth/Dockerfile }
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on: [otel-collector]
+    ports: ["8001:8001"]
+
+  accounts:
+    build: { context: .., dockerfile: crates/services/accounts/Dockerfile }
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+    depends_on:
+      postgres: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+    ports: ["8002:8002"]
+
+  transactions:
+    build: { context: .., dockerfile: crates/services/transactions/Dockerfile }
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+      ACCOUNTS_URL: http://accounts:8002
+      NOTIFICATIONS_URL: http://notifications:8004
+    depends_on: [accounts, notifications]
+    ports: ["8003:8003"]
+
+  notifications:
+    build: { context: .., dockerfile: crates/services/notifications/Dockerfile }
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+      SMTP_URL: http://smtp-fake:80/api/messages
+    depends_on: [otel-collector, smtp-fake]
+    ports: ["8004:8004"]
