@@ -84,9 +84,17 @@ services:
     ports: ["8474:8474"]
 
   experiment-runner:
-    image: alpine:3.20
+    build: { context: .., dockerfile: crates/experiment-runner/Dockerfile }
     profiles: [research]
-    command: ["sh","-c","echo runner placeholder; sleep infinity"]
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+      TOXIPROXY_URL: http://toxiproxy:8474
+      PROM_URL:      http://prometheus:9090
+    volumes:
+      - ../experiments:/experiments:ro
+      - ../data:/data
+    depends_on: [auth, accounts, transactions, notifications, toxiproxy]
+    entrypoint: ["sh","-c","sleep infinity"]
 
   correlation-http:
     build: { context: .., dockerfile: crates/correlation-http/Dockerfile }
