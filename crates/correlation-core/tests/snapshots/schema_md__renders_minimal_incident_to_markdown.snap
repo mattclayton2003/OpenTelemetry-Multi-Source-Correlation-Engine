@@ -1,0 +1,14 @@
+---
+source: crates/correlation-core/tests/schema_md.rs
+expression: render_md(&ic)
+---
+# Incident 01HZTEST0000000000000000
+**Trigger:** trace `abc`
+**Window:** 2026-05-23 12:00:00 UTC → 2026-05-23 12:00:10 UTC (raw)
+**Engine:** 0.1.0  ·  config sha256:000000000  ·  elapsed 0ms
+
+## Top suspects
+(none)
+
+## Notes
+(none)
