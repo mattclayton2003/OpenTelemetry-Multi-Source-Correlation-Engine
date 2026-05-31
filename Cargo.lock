@@ -525,6 +525,7 @@ dependencies = [
  "correlation-loki",
  "correlation-prom",
  "correlation-tempo",
+ "insta",
  "serde_json",
  "tokio",
 ]
