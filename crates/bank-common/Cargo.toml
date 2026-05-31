@@ -20,6 +20,7 @@ thiserror             = { workspace = true }
 anyhow                = { workspace = true }
 prometheus            = { workspace = true }
 indexmap              = { workspace = true }
+rand                  = "0.8"
 
 [dev-dependencies]
 tower = "0.4"
