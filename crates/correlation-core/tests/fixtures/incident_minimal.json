@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "incident_id": "01HZTEST0000000000000000",
+  "produced_at": "2026-05-23T12:00:00Z",
+  "engine_version": "0.1.0",
+  "config_hash": "sha256:0000000000000000",
+  "elapsed_ms": 0,
+  "trigger": { "kind": "trace", "trace": { "trace_id": "abc" } },
+  "window": { "start": "2026-05-23T12:00:00Z", "end": "2026-05-23T12:00:10Z", "expanded": false },
+  "services": [],
+  "suspects": [],
+  "spans": [],
+  "span_tree": [],
+  "log_batches": [],
+  "metric_anomalies": [],
+  "timeline": [],
+  "notes": []
+}
