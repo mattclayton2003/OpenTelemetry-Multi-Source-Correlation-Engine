@@ -92,6 +92,77 @@ impl Engine {
         })
     }
 
+    pub async fn correlate_anomaly(
+        &self,
+        metric: String,
+        service: String,
+        window_start: chrono::DateTime<chrono::Utc>,
+        window_end: chrono::DateTime<chrono::Utc>,
+        observed_value: f64,
+    ) -> Result<IncidentContext, BackendError> {
+        use crate::anomaly::{Detector, zscore::ZScore};
+        use crate::backend::AnomalyWindowQuery;
+        let t0 = std::time::Instant::now();
+        let pts = self.backend.query_metric_window(AnomalyWindowQuery {
+            metric: metric.clone(),
+            start: window_start - chrono::Duration::seconds(self.cfg.window_expansion_sec * 4),
+            end: window_end,
+        }).await.unwrap_or_default();
+        let series: Vec<_> = pts.into_iter().filter(|p| p.service == service).collect();
+        let det = ZScore { k: self.cfg.anomaly_zscore_k, min_baseline: self.cfg.min_baseline_sec as usize };
+        let hits = det.detect(&series);
+        let mut notes = vec![];
+        if hits.is_empty() {
+            notes.push(format!("no anomaly above threshold k={} in window", self.cfg.anomaly_zscore_k));
+            return Ok(self.empty_incident(Trigger::Anomaly { anomaly: AnomalyTrigger {
+                metric, service, window: Window { start: window_start, end: window_end, expanded: false },
+                observed_value, baseline_mean: 0.0, baseline_stddev: 0.0, z_score: 0.0,
+                detector: "z_score".into(),
+            }}, notes, t0));
+        }
+        let hit = hits.last().unwrap().clone();
+        Ok(IncidentContext {
+            schema_version: SCHEMA_VERSION.into(),
+            incident_id: uuid::Uuid::now_v7().to_string(),
+            produced_at: self.clock.now(),
+            engine_version: env!("CARGO_PKG_VERSION").into(),
+            config_hash: self.cfg.hash(),
+            elapsed_ms: t0.elapsed().as_millis() as u64,
+            trigger: Trigger::Anomaly { anomaly: AnomalyTrigger {
+                metric: metric.clone(), service: service.clone(),
+                window: Window { start: window_start, end: window_end, expanded: false },
+                observed_value, baseline_mean: hit.baseline_mean,
+                baseline_stddev: hit.baseline_stddev, z_score: hit.z_score, detector: hit.detector.into(),
+            }},
+            window: Window { start: window_start, end: window_end, expanded: false },
+            services: vec![ServiceSummary {
+                name: service.clone(), span_count: 0, error_span_count: 0,
+                log_count: 0, error_log_count: 0
+            }],
+            suspects: vec![Suspect {
+                rank: 1, service: service.clone(), score: hit.z_score,
+                evidence_breakdown: EvidenceBreakdown {
+                    direct_error_weight: 0.0, direct_anomaly_weight: hit.z_score,
+                    propagated_weight: 0.0, temporal_tightness_multiplier: 1.0,
+                    contributors: vec![Contributor {
+                        kind: "metric_anomaly".into(), r#ref: format!("{metric}@{service}"),
+                        weight: hit.z_score
+                    }],
+                },
+            }],
+            spans: vec![], span_tree: vec![],
+            log_batches: vec![],
+            metric_anomalies: vec![MetricAnomalyRef {
+                id: "anom_0".into(), service, metric,
+                window: Window { start: window_start, end: window_end, expanded: false },
+                severity: (hit.z_score / 10.0).min(1.0),
+                detector: hit.detector.into(),
+                baseline_mean: hit.baseline_mean, observed_peak: hit.value,
+            }],
+            timeline: vec![], notes,
+        })
+    }
+
     fn empty_incident(&self, trigger: Trigger, notes: Vec<String>, t0: std::time::Instant) -> IncidentContext {
         let now = self.clock.now();
         IncidentContext {
