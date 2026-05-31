@@ -1,0 +1,4 @@
+[
+  { "name":"postgres",  "listen":"0.0.0.0:5433", "upstream":"postgres:5432",  "enabled":true },
+  { "name":"smtp-fake", "listen":"0.0.0.0:2525", "upstream":"smtp-fake:80",   "enabled":true }
+]
