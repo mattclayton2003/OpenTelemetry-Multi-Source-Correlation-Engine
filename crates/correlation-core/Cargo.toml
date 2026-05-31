@@ -22,3 +22,4 @@ tracing     = { workspace = true }
 [dev-dependencies]
 insta       = { workspace = true }
 proptest    = { workspace = true }
+rand        = "0.8"
