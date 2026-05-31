@@ -10,6 +10,7 @@ members = [
     "crates/correlation-http",
     "crates/bank-loadgen",
     "crates/chaos",
+    "crates/experiment-runner",
     "crates/services/auth",
     "crates/services/accounts",
     "crates/services/transactions",
