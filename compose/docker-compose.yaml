@@ -97,3 +97,9 @@ services:
       PROM_URL:  http://prometheus:9090
     ports: ["8500:8500"]
     depends_on: [tempo, loki, prometheus]
+
+  pumba:
+    image: gaiaadm/pumba:0.10.2
+    profiles: [chaos]
+    entrypoint: ["sleep","infinity"]
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
