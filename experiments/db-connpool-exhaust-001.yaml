@@ -1,0 +1,29 @@
+id: db-connpool-exhaust-001
+description: Drive accounts past sqlx pool size with heavy concurrent reads.
+duration_sec: 90
+warmup_sec: 15
+cooldown_sec: 45
+recovery_grace_sec: 15
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://accounts:8002/accounts
+      rps: 500
+      duration_sec: 60
+      body: { owner: "stress" }
+faults:
+  - at_sec: 10
+    until_sec: 60
+    kind: toxiproxy
+    proxy: postgres
+    toxic:
+      name: pg-slow
+      type: latency
+      stream: downstream
+      toxicity: 1.0
+      attributes: { latency: 2000, jitter: 500 }
+ground_truth:
+  primary_faulted_service: accounts
+  expected_blast_radius: [transactions]
+  expected_clean_services: [auth, notifications]
+  failure_class: db_connection_exhaustion

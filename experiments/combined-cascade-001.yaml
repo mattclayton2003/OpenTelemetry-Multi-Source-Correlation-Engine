@@ -1,0 +1,33 @@
+id: combined-cascade-001
+description: SMTP latency + transactions kill mid-experiment; stretch test for ranking.
+duration_sec: 180
+warmup_sec: 30
+cooldown_sec: 60
+recovery_grace_sec: 30
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://transactions:8003/transactions
+      rps: 100
+      duration_sec: 120
+      body: { from: "a1", to: "a2", amount: 50 }
+faults:
+  - at_sec: 30
+    until_sec: 120
+    kind: toxiproxy
+    proxy: smtp-fake
+    toxic:
+      name: smtp-latency
+      type: latency
+      stream: downstream
+      toxicity: 1.0
+      attributes: { latency: 500, jitter: 100 }
+  - at_sec: 75
+    until_sec: 76
+    kind: pumba_kill
+    container: transactions
+ground_truth:
+  primary_faulted_service: notifications
+  expected_blast_radius: [transactions]
+  expected_clean_services: [auth, accounts]
+  failure_class: dependency_latency

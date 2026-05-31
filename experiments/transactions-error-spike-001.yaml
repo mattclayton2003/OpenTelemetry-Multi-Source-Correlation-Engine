@@ -1,0 +1,24 @@
+id: transactions-error-spike-001
+description: In-process error injection (30% 500s) via TRANSACTIONS_INJECT_ERROR_RATE env.
+duration_sec: 90
+warmup_sec: 15
+cooldown_sec: 45
+recovery_grace_sec: 15
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://transactions:8003/transactions
+      rps: 50
+      duration_sec: 60
+      body: { from: "a1", to: "a2", amount: 1 }
+faults:
+  - at_sec: 10
+    until_sec: 60
+    kind: pumba_pause
+    container: transactions
+    duration_sec: 1
+ground_truth:
+  primary_faulted_service: transactions
+  expected_blast_radius: []
+  expected_clean_services: [auth, accounts, notifications]
+  failure_class: error_rate_spike
