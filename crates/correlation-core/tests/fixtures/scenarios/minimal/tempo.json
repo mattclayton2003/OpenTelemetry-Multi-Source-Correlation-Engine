@@ -1,0 +1,26 @@
+[
+  {
+    "span_id": "root1",
+    "trace_id": "trace-minimal",
+    "parent_id": null,
+    "service": "auth",
+    "operation": "POST /login",
+    "start": "2026-05-23T12:00:00Z",
+    "duration_ms": 50,
+    "status": "Ok",
+    "status_message": null,
+    "attributes": {}
+  },
+  {
+    "span_id": "child1",
+    "trace_id": "trace-minimal",
+    "parent_id": "root1",
+    "service": "accounts",
+    "operation": "SELECT account",
+    "start": "2026-05-23T12:00:00.010Z",
+    "duration_ms": 30,
+    "status": "Ok",
+    "status_message": null,
+    "attributes": {}
+  }
+]
