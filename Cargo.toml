@@ -8,6 +8,8 @@ members = [
     "crates/correlation-prom",
     "crates/correlation-cli",
     "crates/correlation-http",
+    "crates/bank-loadgen",
+    "crates/chaos",
     "crates/services/auth",
     "crates/services/accounts",
     "crates/services/transactions",
