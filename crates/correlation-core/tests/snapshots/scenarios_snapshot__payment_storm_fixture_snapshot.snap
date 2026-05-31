@@ -1,0 +1,123 @@
+---
+source: crates/correlation-core/tests/scenarios_snapshot.rs
+expression: redacted
+---
+{
+  "config_hash": "sha256:1d3fd81f13eac45f",
+  "elapsed_ms": 0,
+  "engine_version": "0.1.0",
+  "incident_id": "<redacted>",
+  "log_batches": [],
+  "metric_anomalies": [],
+  "notes": [],
+  "produced_at": "2026-05-23T12:00:00Z",
+  "schema_version": "1.0.0",
+  "services": [
+    {
+      "error_log_count": 0,
+      "error_span_count": 1,
+      "log_count": 0,
+      "name": "notifications",
+      "span_count": 1
+    },
+    {
+      "error_log_count": 0,
+      "error_span_count": 1,
+      "log_count": 0,
+      "name": "transactions",
+      "span_count": 1
+    }
+  ],
+  "span_tree": [
+    {
+      "children": [
+        {
+          "children": [],
+          "span_id": "notif-call"
+        }
+      ],
+      "span_id": "tx-root"
+    }
+  ],
+  "spans": [
+    {
+      "attributes": {},
+      "duration_ms": 850,
+      "id": "tx-root",
+      "operation": "POST /transactions",
+      "parent_id": null,
+      "service": "transactions",
+      "start": "2026-05-23T12:00:00Z",
+      "status": "ERROR",
+      "status_message": "context deadline exceeded",
+      "trace_id": "trace-pay-storm"
+    },
+    {
+      "attributes": {},
+      "duration_ms": 812,
+      "id": "notif-call",
+      "operation": "POST /notify",
+      "parent_id": "tx-root",
+      "service": "notifications",
+      "start": "2026-05-23T12:00:00.020Z",
+      "status": "ERROR",
+      "status_message": "smtp timeout",
+      "trace_id": "trace-pay-storm"
+    }
+  ],
+  "suspects": [
+    {
+      "evidence_breakdown": {
+        "contributors": [
+          {
+            "kind": "span",
+            "ref": "span:tx-root",
+            "weight": 1.85
+          },
+          {
+            "kind": "propagated_from",
+            "ref": "graph",
+            "weight": 0.906
+          }
+        ],
+        "direct_anomaly_weight": 0.0,
+        "direct_error_weight": 1.85,
+        "propagated_weight": 0.906,
+        "temporal_tightness_multiplier": 1.0
+      },
+      "rank": 1,
+      "score": 2.7560000000000002,
+      "service": "transactions"
+    },
+    {
+      "evidence_breakdown": {
+        "contributors": [
+          {
+            "kind": "span",
+            "ref": "span:notif-call",
+            "weight": 1.812
+          }
+        ],
+        "direct_anomaly_weight": 0.0,
+        "direct_error_weight": 1.812,
+        "propagated_weight": 0.0,
+        "temporal_tightness_multiplier": 1.0
+      },
+      "rank": 2,
+      "score": 1.812,
+      "service": "notifications"
+    }
+  ],
+  "timeline": [],
+  "trigger": {
+    "kind": "trace",
+    "trace": {
+      "trace_id": "trace-pay-storm"
+    }
+  },
+  "window": {
+    "end": "2026-05-23T12:00:30.850Z",
+    "expanded": true,
+    "start": "2026-05-23T11:59:30Z"
+  }
+}
