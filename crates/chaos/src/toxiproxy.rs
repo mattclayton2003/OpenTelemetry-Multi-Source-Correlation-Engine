@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone)]
 pub struct ToxiproxyClient { pub base: String, pub http: reqwest::Client }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Toxic {
     pub name: String,
     pub r#type: String,
