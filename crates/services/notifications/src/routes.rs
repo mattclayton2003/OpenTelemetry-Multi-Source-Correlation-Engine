@@ -2,7 +2,7 @@ use axum::{extract::State, Json, Router, routing::post, http::StatusCode};
 use bank_common::errors::{ServiceError, ServiceResult};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)] pub struct Req { pub user: String, pub message: String }
+#[derive(Debug, Deserialize, Serialize)] pub struct Req { pub user: String, pub message: String }
 #[derive(Serialize)]  pub struct Resp { pub queued: bool }
 
 #[derive(Clone)] pub struct Ctx { pub smtp_url: String, pub http: reqwest::Client }

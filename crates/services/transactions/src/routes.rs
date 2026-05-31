@@ -3,7 +3,7 @@ use bank_common::errors::{ServiceError, ServiceResult};
 use serde::{Deserialize, Serialize};
 use crate::clients::{Config, Adjust, Notify, AccountResp};
 
-#[derive(Deserialize)] pub struct TxReq { pub from: String, pub to: String, pub amount: i64 }
+#[derive(Debug, Deserialize)] pub struct TxReq { pub from: String, pub to: String, pub amount: i64 }
 #[derive(Serialize)]   pub struct TxResp { pub id: String, pub status: &'static str }
 
 pub fn router(cfg: Config) -> Router {
