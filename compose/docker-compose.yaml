@@ -67,3 +67,12 @@ services:
     volumes:
       - ./loki-config.yaml:/etc/loki/config.yaml:ro
     ports: ["3100:3100"]
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    command:
+      - --config.file=/etc/prometheus/config.yaml
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./prometheus-config.yaml:/etc/prometheus/config.yaml:ro
+    ports: ["9090:9090"]
