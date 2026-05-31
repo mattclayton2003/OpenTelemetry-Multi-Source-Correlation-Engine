@@ -418,6 +418,7 @@ dependencies = [
  "indexmap 2.6.0",
  "insta",
  "proptest",
+ "rand 0.8.6",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
