@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/bank-common",
+    "crates/correlation-core",
     "crates/services/auth",
     "crates/services/accounts",
     "crates/services/transactions",
