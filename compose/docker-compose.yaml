@@ -89,6 +89,11 @@ services:
     command: ["sh","-c","echo runner placeholder; sleep infinity"]
 
   correlation-http:
-    image: alpine:3.20
+    build: { context: .., dockerfile: crates/correlation-http/Dockerfile }
     profiles: [research]
-    command: ["sh","-c","echo correlation-http placeholder; sleep infinity"]
+    environment:
+      TEMPO_URL: http://tempo:3200
+      LOKI_URL:  http://loki:3100
+      PROM_URL:  http://prometheus:9090
+    ports: ["8500:8500"]
+    depends_on: [tempo, loki, prometheus]
