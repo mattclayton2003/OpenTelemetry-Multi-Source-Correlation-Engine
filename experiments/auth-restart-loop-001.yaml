@@ -1,0 +1,27 @@
+id: auth-restart-loop-001
+description: Pumba kill auth on a 30s cycle.
+duration_sec: 120
+warmup_sec: 20
+cooldown_sec: 60
+recovery_grace_sec: 30
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://auth:8001/auth/login
+      rps: 20
+      duration_sec: 90
+      body: { user: "alice", password: "pw" }
+faults:
+  - at_sec: 30
+    until_sec: 31
+    kind: pumba_kill
+    container: auth
+  - at_sec: 60
+    until_sec: 61
+    kind: pumba_kill
+    container: auth
+ground_truth:
+  primary_faulted_service: auth
+  expected_blast_radius: []
+  expected_clean_services: [accounts, transactions, notifications]
+  failure_class: container_restart

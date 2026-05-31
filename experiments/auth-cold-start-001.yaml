@@ -1,0 +1,24 @@
+id: auth-cold-start-001
+description: Pumba stop+start auth; measure first-N request latency.
+duration_sec: 90
+warmup_sec: 20
+cooldown_sec: 45
+recovery_grace_sec: 30
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://auth:8001/auth/login
+      rps: 10
+      duration_sec: 60
+      body: { user: "alice", password: "pw" }
+faults:
+  - at_sec: 10
+    until_sec: 30
+    kind: pumba_pause
+    container: auth
+    duration_sec: 20
+ground_truth:
+  primary_faulted_service: auth
+  expected_blast_radius: []
+  expected_clean_services: [accounts, transactions, notifications]
+  failure_class: cold_start

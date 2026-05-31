@@ -1,0 +1,29 @@
+id: inter-service-partition-001
+description: Toxiproxy blocks transactions <-> accounts.
+duration_sec: 120
+warmup_sec: 20
+cooldown_sec: 60
+recovery_grace_sec: 20
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://transactions:8003/transactions
+      rps: 50
+      duration_sec: 90
+      body: { from: "a1", to: "a2", amount: 10 }
+faults:
+  - at_sec: 20
+    until_sec: 80
+    kind: toxiproxy
+    proxy: postgres
+    toxic:
+      name: net-partition
+      type: timeout
+      stream: downstream
+      toxicity: 1.0
+      attributes: { timeout: 100 }
+ground_truth:
+  primary_faulted_service: accounts
+  expected_blast_radius: [transactions]
+  expected_clean_services: [auth, notifications]
+  failure_class: network_partition

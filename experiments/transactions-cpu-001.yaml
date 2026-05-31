@@ -1,0 +1,25 @@
+id: transactions-cpu-001
+description: Pumba CPU stress on transactions container.
+duration_sec: 120
+warmup_sec: 20
+cooldown_sec: 60
+recovery_grace_sec: 20
+load:
+  generator: bank-loadgen
+  profile:
+    - endpoint: POST http://transactions:8003/transactions
+      rps: 100
+      duration_sec: 90
+      body: { from: "a1", to: "a2", amount: 5 }
+faults:
+  - at_sec: 20
+    until_sec: 80
+    kind: pumba_stress
+    container: transactions
+    cpus: 2
+    duration_sec: 60
+ground_truth:
+  primary_faulted_service: transactions
+  expected_blast_radius: []
+  expected_clean_services: [auth, accounts, notifications]
+  failure_class: cpu_saturation
