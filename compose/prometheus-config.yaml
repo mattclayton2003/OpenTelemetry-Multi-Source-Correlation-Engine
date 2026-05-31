@@ -1,0 +1,7 @@
+global: { scrape_interval: 5s }
+scrape_configs:
+  - job_name: services
+    static_configs:
+      - targets: ['auth:8001','accounts:8002','transactions:8003','notifications:8004']
+        labels: { env: dev }
+    metrics_path: /metrics
