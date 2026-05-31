@@ -1,0 +1,19 @@
+[package]
+name = "correlation-cli"
+version = "0.1.0"
+edition.workspace = true
+
+[[bin]]
+name = "corr"
+path = "src/main.rs"
+
+[dependencies]
+correlation-core  = { path = "../correlation-core" }
+correlation-tempo = { path = "../correlation-tempo" }
+correlation-loki  = { path = "../correlation-loki" }
+correlation-prom  = { path = "../correlation-prom" }
+tokio       = { workspace = true }
+clap        = { version = "4", features = ["derive", "env"] }
+serde_json  = { workspace = true }
+anyhow      = { workspace = true }
+chrono      = { workspace = true }
