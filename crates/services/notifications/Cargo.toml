@@ -1,0 +1,21 @@
+[package]
+name = "notifications"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "notifications"
+path = "src/main.rs"
+
+[dependencies]
+bank-common = { path = "../../bank-common" }
+tokio       = { workspace = true }
+axum        = { workspace = true }
+reqwest     = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+tracing     = { workspace = true }
+anyhow      = { workspace = true }
