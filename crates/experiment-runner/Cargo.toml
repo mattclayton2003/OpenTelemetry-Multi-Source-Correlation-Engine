@@ -1,0 +1,30 @@
+[package]
+name = "experiment-runner"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "exp"
+path = "src/main.rs"
+
+[dependencies]
+bank-common  = { path = "../bank-common" }
+bank-loadgen = { path = "../bank-loadgen" }
+chaos        = { path = "../chaos" }
+tokio        = { workspace = true }
+reqwest      = { workspace = true }
+serde        = { workspace = true }
+serde_yaml   = "0.9"
+serde_json   = { workspace = true }
+sqlx         = { workspace = true }
+clap         = { version = "4", features = ["derive"] }
+anyhow       = { workspace = true }
+tracing      = { workspace = true }
+chrono       = { workspace = true }
+sha2         = "0.10"
+uuid         = { workspace = true }
+glob         = "0.3"
+fs2          = "0.4"
