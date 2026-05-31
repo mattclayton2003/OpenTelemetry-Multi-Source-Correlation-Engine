@@ -1,0 +1,94 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      retries: 30
+
+  smtp-fake:
+    image: rnwood/smtp4dev:latest
+    ports: ["3000:80"]
+
+  auth:
+    build: { context: .., dockerfile: crates/services/auth/Dockerfile }
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on: [otel-collector]
+    ports: ["8001:8001"]
+
+  accounts:
+    build: { context: .., dockerfile: crates/services/accounts/Dockerfile }
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+      DATABASE_URL: postgres://postgres:postgres@toxiproxy:5433/postgres
+    depends_on:
+      postgres: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+    ports: ["8002:8002"]
+
+  transactions:
+    build: { context: .., dockerfile: crates/services/transactions/Dockerfile }
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+      ACCOUNTS_URL: http://accounts:8002
+      NOTIFICATIONS_URL: http://notifications:8004
+    depends_on: [accounts, notifications]
+    ports: ["8003:8003"]
+
+  notifications:
+    build: { context: .., dockerfile: crates/services/notifications/Dockerfile }
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+      SMTP_URL: http://toxiproxy:2525/api/messages
+    depends_on: [otel-collector, smtp-fake]
+    ports: ["8004:8004"]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.103.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports: ["4317:4317", "4318:4318"]
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo.yaml:ro
+    ports: ["3200:3200"]
+
+  loki:
+    image: grafana/loki:3.0.0
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml:ro
+    ports: ["3100:3100"]
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    command:
+      - --config.file=/etc/prometheus/config.yaml
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./prometheus-config.yaml:/etc/prometheus/config.yaml:ro
+    ports: ["9090:9090"]
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    command: ["-config=/etc/toxiproxy/proxies.json","-host=0.0.0.0"]
+    volumes: ["./toxiproxy/proxies.json:/etc/toxiproxy/proxies.json:ro"]
+    ports: ["8474:8474"]
+
+  experiment-runner:
+    image: alpine:3.20
+    profiles: [research]
+    command: ["sh","-c","echo runner placeholder; sleep infinity"]
+
+  correlation-http:
+    image: alpine:3.20
+    profiles: [research]
+    command: ["sh","-c","echo correlation-http placeholder; sleep infinity"]

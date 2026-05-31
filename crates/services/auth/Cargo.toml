@@ -1,0 +1,25 @@
+[package]
+name         = "auth"
+version      = "0.1.0"
+edition.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "auth"
+path = "src/main.rs"
+
+[dependencies]
+bank-common  = { path = "../../bank-common" }
+tokio        = { workspace = true }
+axum         = { workspace = true }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+tracing      = { workspace = true }
+anyhow       = { workspace = true }
+jsonwebtoken = { workspace = true }
+chrono       = { workspace = true }
+
+[dev-dependencies]
+tower = "0.4"

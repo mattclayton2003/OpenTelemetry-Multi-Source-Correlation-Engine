@@ -1,0 +1,26 @@
+[package]
+name         = "bank-common"
+version      = "0.1.0"
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+
+[dependencies]
+tokio                 = { workspace = true }
+axum                  = { workspace = true }
+serde                 = { workspace = true }
+serde_json            = { workspace = true }
+opentelemetry         = { workspace = true }
+opentelemetry_sdk     = { workspace = true }
+opentelemetry-otlp    = { workspace = true }
+tracing               = { workspace = true }
+tracing-subscriber    = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+thiserror             = { workspace = true }
+anyhow                = { workspace = true }
+prometheus            = { workspace = true }
+indexmap              = { workspace = true }
+rand                  = "0.8"
+
+[dev-dependencies]
+tower = "0.4"
