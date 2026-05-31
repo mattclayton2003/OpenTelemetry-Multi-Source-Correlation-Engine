@@ -1,0 +1,8 @@
+[
+  {
+    "span_id": "tx1", "trace_id": "trace-tx", "parent_id": null,
+    "service": "transactions", "operation": "POST /transactions",
+    "start": "2026-05-23T12:00:00Z", "duration_ms": 200, "status": "Ok",
+    "status_message": null, "attributes": {}
+  }
+]

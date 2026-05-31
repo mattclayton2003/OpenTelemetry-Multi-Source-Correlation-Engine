@@ -1,0 +1,14 @@
+[
+  {
+    "span_id": "tx-root", "trace_id": "trace-pay-storm", "parent_id": null,
+    "service": "transactions", "operation": "POST /transactions",
+    "start": "2026-05-23T12:00:00Z", "duration_ms": 850, "status": "Error",
+    "status_message": "context deadline exceeded", "attributes": {}
+  },
+  {
+    "span_id": "notif-call", "trace_id": "trace-pay-storm", "parent_id": "tx-root",
+    "service": "notifications", "operation": "POST /notify",
+    "start": "2026-05-23T12:00:00.020Z", "duration_ms": 812, "status": "Error",
+    "status_message": "smtp timeout", "attributes": {}
+  }
+]
