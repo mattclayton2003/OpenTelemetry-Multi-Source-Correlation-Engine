@@ -8,6 +8,13 @@ use std::path::Path;
 use std::time::Duration;
 
 pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::Result<()> {
+    let lock_path = path.parent()
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .join(".labels.lock");
+    let lock_file = std::fs::OpenOptions::new().create(true).write(true).open(&lock_path)?;
+    fs2::FileExt::try_lock_exclusive(&lock_file)
+        .map_err(|_| anyhow::anyhow!("another experiment is running (lock: {})", lock_path.display()))?;
+
     let yaml_text = std::fs::read_to_string(path)?;
     let exp: Experiment = serde_yaml::from_str(&yaml_text)?;
     let sha = {
