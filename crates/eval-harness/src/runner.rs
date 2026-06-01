@@ -30,6 +30,19 @@ pub async fn run_suite(ctx: &EvalContext, yaml_paths: Vec<std::path::PathBuf>, t
     // 2. Settle for telemetry to land
     tokio::time::sleep(std::time::Duration::from_secs(ctx.settle_sec)).await;
 
+    // 2b. Insert eval_runs parent row FIRST so eval_results FK is satisfied.
+    //     ended_at is updated at the end of scoring.
+    sqlx::query("INSERT INTO eval_runs (eval_run_id, tag, started_at, ended_at, config_hash, engine_version, runner_version, scoring_toml_hash, config_json) VALUES (?,?,?,?,?,?,?,?,?)")
+        .bind(&eval_run_id).bind(&tag)
+        .bind(started.timestamp_nanos_opt().unwrap_or(0))
+        .bind(started.timestamp_nanos_opt().unwrap_or(0)) // placeholder; updated after scoring
+        .bind(&ctx.config_hash)
+        .bind(env!("CARGO_PKG_VERSION"))
+        .bind(experiment_runner_version())
+        .bind(&ctx.scoring_hash)
+        .bind(serde_json::to_string(&ctx.engine.cfg)?)
+        .execute(&ctx.eval_db).await?;
+
     // 3. For each experiment row in labels DB, invoke engine in both modes and score
     let rows: Vec<(String, String, String, i64, i64)> = sqlx::query_as(
         "SELECT id, primary_faulted_service, failure_class, started_at, ended_at FROM experiments"
@@ -59,15 +72,9 @@ pub async fn run_suite(ctx: &EvalContext, yaml_paths: Vec<std::path::PathBuf>, t
     }
 
     let ended = Utc::now();
-    sqlx::query("INSERT INTO eval_runs (eval_run_id, tag, started_at, ended_at, config_hash, engine_version, runner_version, scoring_toml_hash, config_json) VALUES (?,?,?,?,?,?,?,?,?)")
-        .bind(&eval_run_id).bind(&tag)
-        .bind(started.timestamp_nanos_opt().unwrap_or(0))
+    sqlx::query("UPDATE eval_runs SET ended_at = ? WHERE eval_run_id = ?")
         .bind(ended.timestamp_nanos_opt().unwrap_or(0))
-        .bind(&ctx.config_hash)
-        .bind(env!("CARGO_PKG_VERSION"))
-        .bind(experiment_runner_version())
-        .bind(&ctx.scoring_hash)
-        .bind(serde_json::to_string(&ctx.engine.cfg)?)
+        .bind(&eval_run_id)
         .execute(&ctx.eval_db).await?;
     Ok(())
 }
