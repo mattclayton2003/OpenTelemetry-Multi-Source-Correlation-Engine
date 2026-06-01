@@ -30,10 +30,11 @@ async fn main() -> anyhow::Result<()> {
     let incidents = db::open(&cli.incidents).await?;
     let eval      = db::open(&cli.eval).await?;
 
-    // Run migrations on each DB
+    // Run migrations on each DB. labels migrations live in the
+    // experiment-runner crate (eval invokes run_file which expects schema).
     sqlx::migrate!("./migrations_eval").run(&eval).await?;
     sqlx::migrate!("./migrations_incidents").run(&incidents).await?;
-    // labels DB migrations are owned by experiment-runner; ensured by its own open()
+    sqlx::migrate!("../experiment-runner/migrations").run(&labels).await?;
 
     match cli.cmd {
         Cmd::Run { suite, config, scoring, coverage, invocation, tag } => {
