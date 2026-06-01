@@ -1,0 +1,1 @@
+ALTER TABLE eval_runs ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}';
