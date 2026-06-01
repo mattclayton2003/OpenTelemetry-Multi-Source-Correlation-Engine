@@ -96,6 +96,22 @@ services:
     depends_on: [auth, accounts, transactions, notifications, toxiproxy]
     entrypoint: ["sh","-c","sleep infinity"]
 
+  eval-harness:
+    build: { context: .., dockerfile: crates/eval-harness/Dockerfile }
+    profiles: [research]
+    environment:
+      OTLP_ENDPOINT: http://otel-collector:4317
+      TEMPO_URL:     http://tempo:3200
+      LOKI_URL:      http://loki:3100
+      PROM_URL:      http://prometheus:9090
+    volumes:
+      - ../experiments:/experiments:ro
+      - ../configs:/configs:ro
+      - ../data:/data
+      - ../results:/results
+    depends_on: [tempo, loki, prometheus, experiment-runner]
+    entrypoint: ["sh","-c","sleep infinity"]
+
   correlation-http:
     build: { context: .., dockerfile: crates/correlation-http/Dockerfile }
     profiles: [research]
