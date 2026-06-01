@@ -94,7 +94,7 @@ services:
       - ../experiments:/experiments:ro
       - ../data:/data
     depends_on: [auth, accounts, transactions, notifications, toxiproxy]
-    entrypoint: ["sh","-c","sleep infinity"]
+    entrypoint: ["/busybox/sh","-c","/busybox/sleep infinity"]
 
   eval-harness:
     build: { context: .., dockerfile: crates/eval-harness/Dockerfile }
@@ -110,7 +110,7 @@ services:
       - ../data:/data
       - ../results:/results
     depends_on: [tempo, loki, prometheus, experiment-runner]
-    entrypoint: ["sh","-c","sleep infinity"]
+    entrypoint: ["/busybox/sh","-c","/busybox/sleep infinity"]
 
   correlation-http:
     build: { context: .., dockerfile: crates/correlation-http/Dockerfile }
