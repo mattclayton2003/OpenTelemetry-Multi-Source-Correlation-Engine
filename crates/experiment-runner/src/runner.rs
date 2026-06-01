@@ -69,7 +69,7 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
     if recovery_ts.is_none() && status == "clean" { status = "no_recovery"; }
 
     let ended = Utc::now();
-    sqlx::query("INSERT INTO experiments (id, yaml_path, yaml_sha256, started_at, ended_at, primary_faulted_service, failure_class, blast_radius, clean_services, runner_version, status, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+    sqlx::query("INSERT OR REPLACE INTO experiments (id, yaml_path, yaml_sha256, started_at, ended_at, primary_faulted_service, failure_class, blast_radius, clean_services, runner_version, status, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
         .bind(&exp.id).bind(path.to_string_lossy())
         .bind(&sha)
         .bind(started.timestamp_nanos_opt().unwrap_or(0))
@@ -84,7 +84,7 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
         .execute(pool).await?;
 
     for (i, fault) in exp.faults.iter().enumerate() {
-        sqlx::query("INSERT INTO fault_events (experiment_id, sequence_no, kind, target, started_at, ended_at, config_json) VALUES (?,?,?,?,?,?,?)")
+        sqlx::query("INSERT OR REPLACE INTO fault_events (experiment_id, sequence_no, kind, target, started_at, ended_at, config_json) VALUES (?,?,?,?,?,?,?)")
             .bind(&exp.id).bind(i as i64).bind(spec_kind(&fault.spec)).bind(spec_target(&fault.spec))
             .bind(started.timestamp_nanos_opt().unwrap_or(0) + (fault.at_sec as i64) * 1_000_000_000)
             .bind(started.timestamp_nanos_opt().unwrap_or(0) + (fault.until_sec as i64) * 1_000_000_000)
