@@ -11,6 +11,7 @@ members = [
     "crates/bank-loadgen",
     "crates/chaos",
     "crates/experiment-runner",
+    "crates/eval-harness",
     "crates/services/auth",
     "crates/services/accounts",
     "crates/services/transactions",
