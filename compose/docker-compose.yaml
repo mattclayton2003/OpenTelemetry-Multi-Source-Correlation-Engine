@@ -116,6 +116,7 @@ services:
     build: { context: .., dockerfile: crates/correlation-http/Dockerfile }
     profiles: [research]
     environment:
+      BIND_ADDR: 0.0.0.0:8500
       TEMPO_URL: http://tempo:3200
       LOKI_URL:  http://loki:3100
       PROM_URL:  http://prometheus:9090

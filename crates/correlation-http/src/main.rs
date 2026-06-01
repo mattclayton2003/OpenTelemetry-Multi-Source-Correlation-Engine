@@ -38,8 +38,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/correlate/trace",   post(correlate_trace))
         .route("/correlate/anomaly", post(correlate_anomaly))
         .with_state(Ctx { engine });
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8500").await?;
-    println!("corr-http listening on 127.0.0.1:8500");
+    let bind = std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:8500".into());
+    let listener = tokio::net::TcpListener::bind(&bind).await?;
+    println!("corr-http listening on {bind}");
     axum::serve(listener, app).await?;
     Ok(())
 }
