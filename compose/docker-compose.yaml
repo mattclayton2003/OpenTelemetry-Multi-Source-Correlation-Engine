@@ -123,7 +123,7 @@ services:
     depends_on: [tempo, loki, prometheus]
 
   pumba:
-    image: gaiaadm/pumba:0.10.2
+    image: gaiaadm/pumba:1.1.7
     profiles: [chaos]
     entrypoint: ["sleep","infinity"]
     volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
