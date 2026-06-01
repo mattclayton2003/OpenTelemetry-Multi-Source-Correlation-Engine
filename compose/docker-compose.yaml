@@ -127,3 +127,14 @@ services:
     profiles: [chaos]
     entrypoint: ["sleep","infinity"]
     volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3001:3000"]
+    depends_on: [tempo, loki, prometheus]

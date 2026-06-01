@@ -1,0 +1,30 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "title": "OTel Correlation Engine - Default",
+  "tags": ["otel", "correlation-engine"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timezone": "",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Services up",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "count(up{job=\"services\"} == 1)" }],
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Request rate per service",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "rate(http_requests_total[1m])", "legendFormat": "{{service}}" }],
+      "gridPos": { "x": 6, "y": 0, "w": 18, "h": 8 }
+    }
+  ],
+  "schemaVersion": 38,
+  "version": 1
+}
