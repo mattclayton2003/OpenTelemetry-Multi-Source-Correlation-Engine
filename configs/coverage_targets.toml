@@ -1,0 +1,28 @@
+# Per-failure-class metrics expected to be detectable.
+
+[dependency_latency]
+metrics = ["http_request_duration_seconds:p99", "smtp_send_latency_seconds:p99"]
+
+[dependency_outage]
+metrics = ["http_requests_total{status=~\"5..\"}"]
+
+[db_connection_exhaustion]
+metrics = ["accounts_db_pool_size", "http_request_duration_seconds:p99"]
+
+[cpu_saturation]
+metrics = ["container_cpu_usage_seconds_total"]
+
+[memory_pressure]
+metrics = ["container_memory_rss"]
+
+[container_restart]
+metrics = ["up", "process_start_time_seconds"]
+
+[network_partition]
+metrics = ["http_requests_total{status=~\"5..\"}", "http_request_duration_seconds:p99"]
+
+[error_rate_spike]
+metrics = ["http_requests_total{status=~\"5..\"}"]
+
+[cold_start]
+metrics = ["http_request_duration_seconds:p99"]
