@@ -1,0 +1,55 @@
+# Per-failure-class metric to feed into engine's anomaly path.
+
+[dependency_latency]
+metric  = "http_request_duration_seconds:p99"
+service = "transactions"
+window_pre_sec  = 0
+window_post_sec = 120
+
+[dependency_outage]
+metric  = "http_requests_total{status=~\"5..\"}"
+service = "accounts"
+window_pre_sec  = 0
+window_post_sec = 120
+
+[db_connection_exhaustion]
+metric  = "http_request_duration_seconds:p99"
+service = "accounts"
+window_pre_sec  = 0
+window_post_sec = 120
+
+[cpu_saturation]
+metric  = "container_cpu_usage_seconds_total"
+service = "transactions"
+window_pre_sec  = 0
+window_post_sec = 120
+
+[memory_pressure]
+metric  = "container_memory_rss"
+service = "notifications"
+window_pre_sec  = 0
+window_post_sec = 120
+
+[container_restart]
+metric  = "up"
+service = "auth"
+window_pre_sec  = 0
+window_post_sec = 120
+
+[network_partition]
+metric  = "http_requests_total{status=~\"5..\"}"
+service = "accounts"
+window_pre_sec  = 0
+window_post_sec = 120
+
+[error_rate_spike]
+metric  = "http_requests_total{status=~\"5..\"}"
+service = "transactions"
+window_pre_sec  = 0
+window_post_sec = 120
+
+[cold_start]
+metric  = "http_request_duration_seconds:p99"
+service = "auth"
+window_pre_sec  = 0
+window_post_sec = 120
