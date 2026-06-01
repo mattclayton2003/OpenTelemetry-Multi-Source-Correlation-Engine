@@ -11,6 +11,6 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release -p experiment-runner
 
-FROM gcr.io/distroless/cc-debian12
+FROM gcr.io/distroless/cc-debian12:debug
 COPY --from=builder /app/target/release/exp /usr/local/bin/exp
 ENTRYPOINT ["/usr/local/bin/exp"]
