@@ -1,0 +1,29 @@
+[package]
+name = "eval-harness"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "eval"
+path = "src/main.rs"
+
+[dependencies]
+correlation-core  = { path = "../correlation-core" }
+correlation-tempo = { path = "../correlation-tempo" }
+correlation-loki  = { path = "../correlation-loki" }
+correlation-prom  = { path = "../correlation-prom" }
+experiment-runner = { path = "../experiment-runner" }
+tokio       = { workspace = true }
+sqlx        = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+toml        = { workspace = true }
+clap        = { version = "4", features = ["derive"] }
+anyhow      = { workspace = true }
+chrono      = { workspace = true }
+uuid        = { workspace = true }
+sha2        = "0.10"
+glob        = "0.3"
