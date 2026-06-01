@@ -1,0 +1,21 @@
+name: reproduce
+on:
+  workflow_dispatch:
+  schedule: [{ cron: "30 6 * * *" }]
+permissions:
+  contents: read
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: docker compose -f compose/docker-compose.yaml --profile research up -d --build
+      - run: cargo run -p eval-harness -- run --suite "experiments/payment-storm-001.yaml" --tag reproduce-canary
+      - run: |
+          EVAL_ID=$(sqlite3 data/eval_runs.db "SELECT eval_run_id FROM eval_runs WHERE tag='reproduce-canary' ORDER BY started_at DESC LIMIT 1")
+          cargo run -p eval-harness -- reproduce "$EVAL_ID"
+      - if: always()
+        run: docker compose -f compose/docker-compose.yaml --profile research down -v
