@@ -36,6 +36,14 @@ pub fn composite(s: &ScoreInputs, w: &Weights) -> f64 {
       - w.fp_penalty * s.normalized_clean_fps
 }
 
+pub fn load_weights(path: &std::path::Path) -> anyhow::Result<(Weights, String)> {
+    use sha2::Digest;
+    let text = std::fs::read_to_string(path)?;
+    let w: Weights = toml::from_str(&text)?;
+    let mut h = sha2::Sha256::new(); h.update(text.as_bytes());
+    Ok((w, format!("sha256:{:x}", h.finalize())))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
