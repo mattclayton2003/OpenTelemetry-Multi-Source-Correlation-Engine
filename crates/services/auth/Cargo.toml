@@ -22,4 +22,4 @@ jsonwebtoken = { workspace = true }
 chrono       = { workspace = true }
 
 [dev-dependencies]
-tower = "0.4"
+tower = "0.5"
