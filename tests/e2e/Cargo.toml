@@ -12,5 +12,7 @@ reqwest     = { workspace = true }
 serde_json  = { workspace = true }
 anyhow      = { workspace = true }
 
-[dev-dependencies]
-correlation-cli = { path = "../../crates/correlation-cli" }
+# Note: the `corr` binary is exercised by locating the compiled artifact in the
+# target dir at runtime (see tests/engine_real_backends.rs). We deliberately do
+# NOT depend on `correlation-cli` here: it exposes only a `[[bin]]` (no lib
+# target), so a normal path dependency is invalid and cargo would ignore it.
