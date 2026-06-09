@@ -20,7 +20,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --release properties
+      # `--test properties` selects the proptest *binary*; a bare `properties`
+      # is a test-name filter that matches no function (they live inside a
+      # proptest!{} block) and silently runs nothing.
+      - run: cargo test --workspace --release --test properties
 
   proptest-nightly:
     if: github.event_name == 'schedule'
@@ -33,4 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --release properties
+      # `--test properties` selects the proptest *binary*; a bare `properties`
+      # is a test-name filter that matches no function (they live inside a
+      # proptest!{} block) and silently runs nothing.
+      - run: cargo test --workspace --release --test properties
