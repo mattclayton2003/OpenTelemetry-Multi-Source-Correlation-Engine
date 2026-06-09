@@ -1,8 +1,14 @@
 # Per-failure-class metric to feed into engine's anomaly path.
+#
+# Latency classes use a p99 derived from the collector's spanmetrics connector
+# (duration_milliseconds_bucket, label service_name). `label_replace` copies
+# service_name -> service so the engine can select the faulted service (the
+# `service` field below) from the per-service result. The same query works for
+# any service; the engine filters by `service`.
 
 [dependency_latency]
-metric  = "http_request_duration_seconds:p99"
-service = "transactions"
+metric  = 'label_replace(histogram_quantile(0.99, sum by (le, service_name) (rate(duration_milliseconds_bucket[1m]))), "service", "$1", "service_name", "(.+)")'
+service = "notifications"
 window_pre_sec  = 0
 window_post_sec = 120
 
@@ -13,7 +19,7 @@ window_pre_sec  = 0
 window_post_sec = 120
 
 [db_connection_exhaustion]
-metric  = "http_request_duration_seconds:p99"
+metric  = 'label_replace(histogram_quantile(0.99, sum by (le, service_name) (rate(duration_milliseconds_bucket[1m]))), "service", "$1", "service_name", "(.+)")'
 service = "accounts"
 window_pre_sec  = 0
 window_post_sec = 120
@@ -49,7 +55,7 @@ window_pre_sec  = 0
 window_post_sec = 120
 
 [cold_start]
-metric  = "http_request_duration_seconds:p99"
+metric  = 'label_replace(histogram_quantile(0.99, sum by (le, service_name) (rate(duration_milliseconds_bucket[1m]))), "service", "$1", "service_name", "(.+)")'
 service = "auth"
 window_pre_sec  = 0
 window_post_sec = 120
