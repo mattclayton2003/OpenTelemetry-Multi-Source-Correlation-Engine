@@ -4,27 +4,62 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "title": "OTel Correlation Engine - Default",
+  "title": "OTel Correlation Engine - Services",
   "tags": ["otel", "correlation-engine"],
   "templating": { "list": [] },
-  "time": { "from": "now-15m", "to": "now" },
+  "time": { "from": "now-3h", "to": "now" },
   "timezone": "",
   "panels": [
     {
       "type": "stat",
       "title": "Services up",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "count(up{job=\"services\"} == 1)" }],
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 }
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "count(up{job=\"services\"} == 1)" }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 8 }
     },
     {
       "type": "timeseries",
-      "title": "Request rate per service",
+      "title": "Throughput per service (req/s, from spans)",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "rate(http_requests_total[1m])", "legendFormat": "{{service}}" }],
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (service_name) (rate(calls_total[1m]))", "legendFormat": "{{service_name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
       "gridPos": { "x": 6, "y": 0, "w": 18, "h": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "p99 latency per service (spanmetrics) — fault windows spike here",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (service_name, le) (rate(duration_milliseconds_bucket[1m])))", "legendFormat": "{{service_name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 9 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Error rate per service (span status = ERROR)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (service_name) (rate(calls_total{status_code=\"STATUS_CODE_ERROR\"}[1m]))", "legendFormat": "{{service_name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 9 }
+    },
+    {
+      "type": "timeseries",
+      "title": "notifications p99 by operation (the SMTP-latency fault lives in /notify)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (span_name, le) (rate(duration_milliseconds_bucket{service_name=\"notifications\"}[1m])))", "legendFormat": "{{span_name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "x": 0, "y": 17, "w": 24, "h": 8 }
     }
   ],
   "schemaVersion": 38,
-  "version": 1
+  "version": 2
 }
