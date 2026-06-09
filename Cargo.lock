@@ -568,6 +568,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "correlation-core",
  "indexmap 2.6.0",
  "insta",
  "proptest",
@@ -828,7 +829,6 @@ name = "e2e"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "correlation-cli",
  "reqwest",
  "serde_json",
  "tokio",

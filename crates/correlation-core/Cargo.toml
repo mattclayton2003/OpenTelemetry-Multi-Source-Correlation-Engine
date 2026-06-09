@@ -20,6 +20,11 @@ toml        = { workspace = true }
 tracing     = { workspace = true }
 
 [dev-dependencies]
+# Self dev-dependency with `test-helpers` enabled: integration tests in `tests/`
+# compile against this crate as an external dependency and otherwise would not
+# see the feature-gated `backend_mock` module. This is the canonical cargo idiom
+# for exposing a test-only feature to a crate's own integration tests.
+correlation-core = { path = ".", features = ["test-helpers"] }
 insta       = { workspace = true }
 proptest    = { workspace = true }
 rand        = "0.8"
