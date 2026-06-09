@@ -25,12 +25,13 @@ pub fn render_md(ic: &IncidentContext) -> String {
         }
     )
     .ok();
+    // Take the first 16 *characters* (not bytes) so a multi-byte UTF-8 hash
+    // can't panic on a char-boundary slice.
+    let config_short: String = ic.config_hash.chars().take(16).collect();
     writeln!(
         s,
         "**Engine:** {}  ·  config {}  ·  elapsed {}ms\n",
-        ic.engine_version,
-        &ic.config_hash[..ic.config_hash.len().min(16)],
-        ic.elapsed_ms
+        ic.engine_version, config_short, ic.elapsed_ms
     )
     .ok();
 
