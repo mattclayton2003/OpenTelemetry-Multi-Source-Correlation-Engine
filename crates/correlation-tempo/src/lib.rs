@@ -16,16 +16,17 @@ impl TempoClient {
         }
     }
 
-    /// Searches Tempo for trace ids matching a TraceQL query within
-    /// `[start_sec, end_sec]` (Unix seconds), capped at `limit`. Returns the
-    /// trace ids in Tempo's response order (most recent first).
+    /// Searches Tempo for traces matching a TraceQL query within
+    /// `[start_sec, end_sec]` (Unix seconds), capped at `limit`. Returns one
+    /// [`TraceHit`] per matching trace (with duration and root service) so
+    /// callers can pick the most relevant one rather than just the first.
     pub async fn search_traces(
         &self,
         traceql: &str,
         start_sec: i64,
         end_sec: i64,
         limit: u32,
-    ) -> Result<Vec<String>, BackendError> {
+    ) -> Result<Vec<TraceHit>, BackendError> {
         let url = format!("{}/api/search", self.base_url);
         let v: serde_json::Value = self
             .retry
@@ -52,16 +53,31 @@ impl TempoClient {
             })
             .await
             .map_err(|_| BackendError::Unreachable)?;
-        let ids = v["traces"]
+        let hits = v["traces"]
             .as_array()
             .map(|arr| {
                 arr.iter()
-                    .filter_map(|t| t["traceID"].as_str().map(|s| s.to_string()))
+                    .filter_map(|t| {
+                        t["traceID"].as_str().map(|id| TraceHit {
+                            trace_id: id.to_string(),
+                            // durationMs is omitted by Tempo for ~0ms traces.
+                            duration_ms: t["durationMs"].as_u64().unwrap_or(0),
+                            root_service: t["rootServiceName"].as_str().unwrap_or("").to_string(),
+                        })
+                    })
                     .collect()
             })
             .unwrap_or_default();
-        Ok(ids)
+        Ok(hits)
     }
+}
+
+/// One trace returned by a Tempo search.
+#[derive(Debug, Clone)]
+pub struct TraceHit {
+    pub trace_id: String,
+    pub duration_ms: u64,
+    pub root_service: String,
 }
 
 #[async_trait]

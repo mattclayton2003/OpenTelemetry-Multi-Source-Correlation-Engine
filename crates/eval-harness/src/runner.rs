@@ -155,8 +155,21 @@ enum TraceDiscovery {
     Unreachable,
 }
 
+/// Picks the most representative trace among `hits` for a fault on `faulted`.
+///
+/// Prefers a trace where the faulted service is a *dependency* of a larger
+/// request (root != faulted — i.e. the full request path that exercised it),
+/// then the longest-duration trace (the one most impacted by a latency fault).
+/// This avoids selecting trivial single-span `/health` or `/metrics` traces
+/// that merely touch the faulted service.
+fn pick_best(hits: Vec<correlation_tempo::TraceHit>, faulted: &str) -> Option<String> {
+    hits.into_iter()
+        .max_by_key(|h| (h.root_service != faulted, h.duration_ms))
+        .map(|h| h.trace_id)
+}
+
 /// Finds a representative trace id for `service` within `[start, end]`,
-/// preferring a trace that contains an error span.
+/// preferring an error trace, then the most fault-impacted request trace.
 async fn discover_trace_id(
     tempo: &TempoClient,
     service: &str,
@@ -165,8 +178,8 @@ async fn discover_trace_id(
 ) -> TraceDiscovery {
     let (s, e) = (start.timestamp(), end.timestamp());
     let error_q = format!("{{ resource.service.name = \"{service}\" && status = error }}");
-    if let Ok(ids) = tempo.search_traces(&error_q, s, e, 1).await {
-        if let Some(id) = ids.into_iter().next() {
+    if let Ok(hits) = tempo.search_traces(&error_q, s, e, 10).await {
+        if let Some(id) = pick_best(hits, service) {
             return TraceDiscovery::Found(id);
         }
     }
@@ -174,8 +187,9 @@ async fn discover_trace_id(
     // us whether Tempo is actually reachable (vs. the error query just being a
     // transient miss).
     let any_q = format!("{{ resource.service.name = \"{service}\" }}");
-    match tempo.search_traces(&any_q, s, e, 5).await {
-        Ok(ids) => match ids.into_iter().next() {
+    match tempo.search_traces(&any_q, s, e, 20).await {
+        Ok(hits) if hits.is_empty() => TraceDiscovery::NoneFound,
+        Ok(hits) => match pick_best(hits, service) {
             Some(id) => TraceDiscovery::Found(id),
             None => TraceDiscovery::NoneFound,
         },

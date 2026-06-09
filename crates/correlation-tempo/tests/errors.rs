@@ -63,12 +63,13 @@ async fn parses_minimal_otlp_response() {
 }
 
 #[tokio::test]
-async fn search_traces_extracts_trace_ids() {
+async fn search_traces_extracts_hits_with_duration() {
     let server = MockServer::start().await;
     let body = serde_json::json!({
         "traces": [
-            { "traceID": "aaa", "rootServiceName": "auth" },
-            { "traceID": "bbb", "rootServiceName": "auth" }
+            { "traceID": "aaa", "rootServiceName": "auth", "durationMs": 5 },
+            { "traceID": "bbb", "rootServiceName": "transactions", "durationMs": 812 },
+            { "traceID": "ccc", "rootServiceName": "notifications" }
         ]
     });
     Mock::given(path("/api/search"))
@@ -76,11 +77,16 @@ async fn search_traces_extracts_trace_ids() {
         .mount(&server)
         .await;
     let c = TempoClient::new(server.uri());
-    let ids = c
+    let hits = c
         .search_traces("{ resource.service.name = \"auth\" }", 0, 100, 5)
         .await
         .unwrap();
-    assert_eq!(ids, vec!["aaa".to_string(), "bbb".to_string()]);
+    let ids: Vec<&str> = hits.iter().map(|h| h.trace_id.as_str()).collect();
+    assert_eq!(ids, vec!["aaa", "bbb", "ccc"]);
+    assert_eq!(hits[1].duration_ms, 812);
+    assert_eq!(hits[1].root_service, "transactions");
+    // durationMs omitted by Tempo for ~0ms traces -> defaults to 0.
+    assert_eq!(hits[2].duration_ms, 0);
 }
 
 #[tokio::test]
@@ -91,8 +97,8 @@ async fn search_traces_empty_when_no_matches() {
         .mount(&server)
         .await;
     let c = TempoClient::new(server.uri());
-    let ids = c.search_traces("{}", 0, 100, 5).await.unwrap();
-    assert!(ids.is_empty());
+    let hits = c.search_traces("{}", 0, 100, 5).await.unwrap();
+    assert!(hits.is_empty());
 }
 
 #[tokio::test]

@@ -34,6 +34,7 @@ async fn create(
     let r = cfg
         .http
         .post(format!("{}/accounts/{}/adjust", cfg.accounts_url, req.from))
+        .headers(bank_common::otel::trace_headers())
         .json(&Adjust { delta: -req.amount })
         .send()
         .await
@@ -45,6 +46,7 @@ async fn create(
     let r = cfg
         .http
         .post(format!("{}/accounts/{}/adjust", cfg.accounts_url, req.to))
+        .headers(bank_common::otel::trace_headers())
         .json(&Adjust { delta: req.amount })
         .send()
         .await
@@ -56,6 +58,7 @@ async fn create(
     let _ = cfg
         .http
         .post(format!("{}/notify", cfg.notifications_url))
+        .headers(bank_common::otel::trace_headers())
         .json(&Notify {
             user: req.to.clone(),
             message: format!("received {}", req.amount),
