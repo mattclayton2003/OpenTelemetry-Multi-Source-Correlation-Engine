@@ -31,6 +31,20 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
 
     let yaml_text = std::fs::read_to_string(path)?;
     let exp: Experiment = serde_yaml::from_str(&yaml_text)?;
+
+    // Reject inverted fault windows up front: a fault whose until_sec precedes
+    // its at_sec would never hold (and would record an ended<started window in
+    // the labels DB, corrupting downstream scoring).
+    for (i, f) in exp.faults.iter().enumerate() {
+        if f.until_sec < f.at_sec {
+            anyhow::bail!(
+                "experiment {}: fault {i} has until_sec ({}) < at_sec ({})",
+                exp.id,
+                f.until_sec,
+                f.at_sec
+            );
+        }
+    }
     let sha = {
         let mut h = sha2::Sha256::new();
         h.update(yaml_text.as_bytes());
@@ -73,6 +87,9 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
     // Ties: apply before revert at the same instant.
     events.sort_by_key(|(t, ev)| (*t, matches!(ev, Ev::Revert(_))));
 
+    // until_sec >= at_sec is guaranteed by the validation above, so every fault's
+    // Revert event is scheduled at or after its Apply and all handles are drained
+    // by the time the loop ends.
     let mut handles: Vec<Option<chaos::driver::FaultHandle>> =
         (0..exp.faults.len()).map(|_| None).collect();
     let mut status = "clean";
@@ -90,14 +107,6 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
                     }
                 }
             }
-        }
-    }
-    // Safety net for malformed specs (e.g. until_sec < at_sec): revert anything
-    // still applied so we never leak a fault past the experiment.
-    for h in handles.into_iter().flatten() {
-        if let Err(e) = driver.revert(&h).await {
-            tracing::error!("revert failed: {e}");
-            status = "dirty";
         }
     }
     // Hold the experiment open until duration_sec from t=0 (no-op if already past).
