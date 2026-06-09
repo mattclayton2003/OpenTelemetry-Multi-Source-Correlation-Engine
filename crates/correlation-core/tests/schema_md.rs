@@ -1,4 +1,4 @@
-use correlation_core::schema::{IncidentContext, renderer_md::render_md};
+use correlation_core::schema::{renderer_md::render_md, IncidentContext};
 
 #[test]
 fn renders_minimal_incident_to_markdown() {

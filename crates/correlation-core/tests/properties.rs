@@ -1,7 +1,7 @@
 use correlation_core::graph::builder::EvidenceGraph;
-use correlation_core::graph::nodes::Node;
 use correlation_core::graph::edges::{Edge, EdgeKind};
-use correlation_core::graph::invariants::{check_no_dangling, check_no_caused_by_cycles};
+use correlation_core::graph::invariants::{check_no_caused_by_cycles, check_no_dangling};
+use correlation_core::graph::nodes::Node;
 use proptest::prelude::*;
 use rand::SeedableRng;
 

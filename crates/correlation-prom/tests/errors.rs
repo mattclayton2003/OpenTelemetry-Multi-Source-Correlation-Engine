@@ -1,7 +1,7 @@
-use correlation_prom::PromClient;
-use correlation_core::backend::{TelemetryBackend, BackendError, MetricQuery, AnomalyWindowQuery};
-use wiremock::{MockServer, Mock, ResponseTemplate, matchers::path};
 use chrono::Utc;
+use correlation_core::backend::{AnomalyWindowQuery, BackendError, MetricQuery, TelemetryBackend};
+use correlation_prom::PromClient;
+use wiremock::{matchers::path, Mock, MockServer, ResponseTemplate};
 
 fn mq() -> MetricQuery {
     MetricQuery {
@@ -32,7 +32,8 @@ async fn unreachable_on_5xx() {
     let server = MockServer::start().await;
     Mock::given(path("/api/v1/query_range"))
         .respond_with(ResponseTemplate::new(500))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = PromClient::new(server.uri());
     let res = c.fetch_metric_series(mq()).await;
     assert!(matches!(res, Err(BackendError::Unreachable)));
@@ -51,7 +52,8 @@ async fn parses_minimal_series_response() {
     });
     Mock::given(path("/api/v1/query_range"))
         .respond_with(ResponseTemplate::new(200).set_body_json(body))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = PromClient::new(server.uri());
     let series = c.fetch_metric_series(mq()).await.unwrap();
     assert_eq!(series.len(), 1);
@@ -71,7 +73,8 @@ async fn parses_minimal_anomaly_window_response() {
     });
     Mock::given(path("/api/v1/query_range"))
         .respond_with(ResponseTemplate::new(200).set_body_json(body))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = PromClient::new(server.uri());
     let points = c.query_metric_window(aq()).await.unwrap();
     assert_eq!(points.len(), 1);

@@ -1,10 +1,15 @@
-use correlation_loki::LokiClient;
-use correlation_core::backend::{TelemetryBackend, BackendError, LogQuery};
-use wiremock::{MockServer, Mock, ResponseTemplate, matchers::path};
 use chrono::Utc;
+use correlation_core::backend::{BackendError, LogQuery, TelemetryBackend};
+use correlation_loki::LokiClient;
+use wiremock::{matchers::path, Mock, MockServer, ResponseTemplate};
 
 fn q(services: Vec<String>) -> LogQuery {
-    LogQuery { services, start: Utc::now() - chrono::Duration::seconds(60), end: Utc::now(), level_at_least: None }
+    LogQuery {
+        services,
+        start: Utc::now() - chrono::Duration::seconds(60),
+        end: Utc::now(),
+        level_at_least: None,
+    }
 }
 
 #[tokio::test]
@@ -26,7 +31,8 @@ async fn unreachable_on_5xx() {
     let server = MockServer::start().await;
     Mock::given(path("/loki/api/v1/query_range"))
         .respond_with(ResponseTemplate::new(503))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = LokiClient::new(server.uri());
     let res = c.fetch_logs(q(vec!["auth".into()])).await;
     assert!(matches!(res, Err(BackendError::Unreachable)));
@@ -45,7 +51,8 @@ async fn parses_minimal_loki_response() {
     });
     Mock::given(path("/loki/api/v1/query_range"))
         .respond_with(ResponseTemplate::new(200).set_body_json(body))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = LokiClient::new(server.uri());
     let logs = c.fetch_logs(q(vec!["auth".into()])).await.unwrap();
     assert_eq!(logs.len(), 1);
