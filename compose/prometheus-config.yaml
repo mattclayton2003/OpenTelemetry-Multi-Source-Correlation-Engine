@@ -5,3 +5,7 @@ scrape_configs:
       - targets: ['auth:8001','accounts:8002','transactions:8003','notifications:8004']
         labels: { env: dev }
     metrics_path: /metrics
+  - job_name: eval
+    static_configs:
+      - targets: ['eval-exporter:9112']
+    metrics_path: /metrics

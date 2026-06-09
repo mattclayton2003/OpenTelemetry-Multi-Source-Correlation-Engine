@@ -22,6 +22,8 @@ exporters:
   otlp/tempo:
     endpoint: tempo:4317
     tls: { insecure: true }
+  zipkin:
+    endpoint: http://zipkin:9411/api/v2/spans
   loki:
     endpoint: http://loki:3100/loki/api/v1/push
   prometheusremotewrite:
@@ -33,7 +35,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/tempo, spanmetrics]
+      exporters: [otlp/tempo, spanmetrics, zipkin]
     logs:
       receivers: [otlp]
       processors: [batch]
