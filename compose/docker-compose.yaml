@@ -53,6 +53,7 @@ services:
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
     ports: ["4317:4317", "4318:4318"]
+    depends_on: [zipkin]
 
   tempo:
     image: grafana/tempo:2.5.0
@@ -60,6 +61,13 @@ services:
     volumes:
       - ./tempo-config.yaml:/etc/tempo.yaml:ro
     ports: ["3200:3200"]
+
+  # Zipkin: a second tracing backend with a built-in distributed-trace UI and
+  # service dependency graph. Fed the same spans by the collector (in addition
+  # to Tempo) so the cross-service traces can be viewed at http://localhost:9411.
+  zipkin:
+    image: openzipkin/zipkin:3
+    ports: ["9411:9411"]
 
   loki:
     image: grafana/loki:3.0.0
@@ -122,6 +130,17 @@ services:
       PROM_URL:  http://prometheus:9090
     ports: ["8500:8500"]
     depends_on: [tempo, loki, prometheus]
+
+  # Exposes eval results (eval_runs.db) as Prometheus gauges so the scores live
+  # in Grafana alongside the telemetry. Stdlib-only Python; no build.
+  eval-exporter:
+    image: python:3.12-slim
+    profiles: [research]
+    volumes:
+      - ../data:/data
+      - ../scripts/eval_exporter.py:/exporter.py:ro
+    command: ["python", "/exporter.py"]
+    ports: ["9112:9112"]
 
   pumba:
     image: gaiaadm/pumba:1.1.7

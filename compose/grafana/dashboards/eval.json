@@ -1,0 +1,66 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 0,
+  "id": null,
+  "title": "OTel Correlation Engine - Eval Scores",
+  "tags": ["otel", "correlation-engine", "eval"],
+  "templating": { "list": [] },
+  "time": { "from": "now-5m", "to": "now" },
+  "timezone": "",
+  "panels": [
+    {
+      "type": "bargauge",
+      "title": "Composite by scenario × mode",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "eval_composite", "legendFormat": "{{experiment}} · {{mode}}", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 0.4 },
+            { "color": "green", "value": 0.7 }
+          ] }
+        },
+        "overrides": []
+      },
+      "options": { "orientation": "horizontal", "displayMode": "gradient", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "gridPos": { "x": 0, "y": 0, "w": 14, "h": 14 }
+    },
+    {
+      "type": "stat",
+      "title": "Headline composite by mode",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "avg by (mode) (eval_composite)", "legendFormat": "{{mode}}", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 0.4 },
+            { "color": "green", "value": 0.7 }
+          ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "background" },
+      "gridPos": { "x": 14, "y": 0, "w": 10, "h": 6 }
+    },
+    {
+      "type": "table",
+      "title": "recall@3 by scenario × mode",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "eval_recall_at_3", "format": "table", "instant": true }
+      ],
+      "gridPos": { "x": 14, "y": 6, "w": 10, "h": 8 }
+    }
+  ],
+  "schemaVersion": 38,
+  "version": 1
+}
