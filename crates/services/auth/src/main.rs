@@ -8,7 +8,10 @@ async fn main() -> anyhow::Result<()> {
     let app = axum::Router::new()
         .merge(routes::router())
         .merge(bank_common::health::router())
-        .merge(bank_common::metrics::router(metrics));
+        .merge(bank_common::metrics::router(metrics))
+        .layer(axum::middleware::from_fn(
+            bank_common::otel::propagate_trace_context,
+        ));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8001").await?;
     tracing::info!("auth listening on 8001");

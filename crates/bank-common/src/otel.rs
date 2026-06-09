@@ -1,7 +1,11 @@
 use opentelemetry::global;
+use opentelemetry::propagation::{Extractor, Injector};
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::{runtime, trace as sdktrace, Resource};
+use tracing::Instrument;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub struct OtelGuard;
@@ -40,6 +44,9 @@ pub fn init(service_name: &'static str) -> anyhow::Result<OtelGuard> {
 
     let tracer = provider.tracer(service_name);
     global::set_tracer_provider(provider);
+    // Enable W3C trace-context propagation so a request's trace_id flows across
+    // service boundaries (inject on outgoing HTTP, extract on incoming).
+    global::set_text_map_propagator(TraceContextPropagator::new());
 
     let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
     let fmt_layer = tracing_subscriber::fmt::layer().with_target(true);
@@ -53,4 +60,66 @@ pub fn init(service_name: &'static str) -> anyhow::Result<OtelGuard> {
         .ok(); // ignore "already initialized" in tests
 
     Ok(OtelGuard)
+}
+
+// ---- W3C trace-context propagation across HTTP boundaries ----
+
+/// Reads `traceparent`/`tracestate` from an incoming request's headers.
+struct HeaderExtractor<'a>(&'a axum::http::HeaderMap);
+impl Extractor for HeaderExtractor<'_> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.to_str().ok())
+    }
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_str()).collect()
+    }
+}
+
+/// Writes `traceparent`/`tracestate` onto an outgoing request's headers.
+struct HeaderInjector<'a>(&'a mut axum::http::HeaderMap);
+impl Injector for HeaderInjector<'_> {
+    fn set(&mut self, key: &str, value: String) {
+        if let (Ok(name), Ok(val)) = (
+            axum::http::HeaderName::from_bytes(key.as_bytes()),
+            axum::http::HeaderValue::from_str(&value),
+        ) {
+            self.0.insert(name, val);
+        }
+    }
+}
+
+/// Injects the current span's trace context into `headers`. Call this when
+/// building an outgoing HTTP request so the downstream service joins this trace.
+///
+/// `reqwest::header::HeaderMap` and `axum::http::HeaderMap` are the same
+/// `http` 1.x type, so the result can be passed straight to `RequestBuilder::headers`.
+pub fn inject_current_context(headers: &mut axum::http::HeaderMap) {
+    let cx = tracing::Span::current().context();
+    global::get_text_map_propagator(|p| p.inject_context(&cx, &mut HeaderInjector(headers)));
+}
+
+/// Convenience: a fresh header map carrying the current trace context.
+pub fn trace_headers() -> axum::http::HeaderMap {
+    let mut headers = axum::http::HeaderMap::new();
+    inject_current_context(&mut headers);
+    headers
+}
+
+/// Axum middleware that extracts the incoming `traceparent` and runs the
+/// request inside a server span parented to it, so every service's work for a
+/// request shares one trace_id. Attach with
+/// `.layer(axum::middleware::from_fn(bank_common::otel::propagate_trace_context))`.
+pub async fn propagate_trace_context(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let parent = global::get_text_map_propagator(|p| p.extract(&HeaderExtractor(req.headers())));
+    let span = tracing::info_span!(
+        "http.server",
+        otel.name = %format!("{} {}", req.method(), req.uri().path()),
+        http.method = %req.method(),
+        http.path = %req.uri().path(),
+    );
+    span.set_parent(parent);
+    next.run(req).instrument(span).await
 }

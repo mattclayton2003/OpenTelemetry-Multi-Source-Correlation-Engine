@@ -6,7 +6,10 @@ async fn main() -> anyhow::Result<()> {
     let app = axum::Router::new()
         .merge(notifications::routes::router(smtp_url))
         .merge(bank_common::health::router())
-        .merge(bank_common::metrics::router(metrics));
+        .merge(bank_common::metrics::router(metrics))
+        .layer(axum::middleware::from_fn(
+            bank_common::otel::propagate_trace_context,
+        ));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8004").await?;
     tracing::info!("notifications listening on 8004");
     axum::serve(listener, app).await?;
