@@ -23,6 +23,27 @@ fn flags_clear_spike() {
 }
 
 #[test]
+fn flags_transient_mid_window_spike() {
+    // Spike in the MIDDLE of the window, normal again at the end. The previous
+    // last-point-only detector missed this; the robust median/MAD detector
+    // catches it regardless of where in the window it lands.
+    let mut series: Vec<_> = (0..40).map(|i| pt(i, 5.0)).collect();
+    for (i, s) in series.iter_mut().enumerate().take(20).skip(15) {
+        *s = pt(i as i64, 900.0);
+    }
+    let det = ZScore {
+        k: 3.0,
+        min_baseline: 10,
+    };
+    let anoms = det.detect(&series);
+    assert!(!anoms.is_empty(), "should detect a mid-window spike");
+    assert!(
+        anoms.iter().all(|a| a.value > 100.0),
+        "only the spike points should be flagged, not the normal baseline"
+    );
+}
+
+#[test]
 fn no_flags_on_clean_baseline() {
     let series: Vec<_> = (0..30).map(|i| pt(i, 1.0)).collect();
     let det = ZScore {

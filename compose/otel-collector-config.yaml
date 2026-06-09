@@ -7,6 +7,17 @@ receivers:
 processors:
   batch: {}
 
+connectors:
+  # Derive per-service RED metrics (calls + duration histogram) from the spans
+  # the collector already receives, so anomaly mode has a real latency signal
+  # without instrumenting the services. service.name is included as a dimension
+  # by default -> Prometheus label `service_name`.
+  spanmetrics:
+    histogram:
+      explicit:
+        buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2s, 5s]
+    metrics_flush_interval: 5s
+
 exporters:
   otlp/tempo:
     endpoint: tempo:4317
@@ -22,12 +33,12 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/tempo]
+      exporters: [otlp/tempo, spanmetrics]
     logs:
       receivers: [otlp]
       processors: [batch]
       exporters: [loki]
     metrics:
-      receivers: [otlp]
+      receivers: [otlp, spanmetrics]
       processors: [batch]
       exporters: [prometheusremotewrite]
