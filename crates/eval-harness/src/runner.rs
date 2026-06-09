@@ -74,15 +74,20 @@ pub async fn run_suite(
         // the window). If none is found we record an explicit degraded incident
         // rather than scoring a fabricated trace id.
         let ic_trace = match discover_trace_id(&ctx.tempo, &primary, start, end).await {
-            Some(trace_id) => ctx
+            TraceDiscovery::Found(trace_id) => ctx
                 .engine
                 .correlate_trace(trace_id)
                 .await
                 .unwrap_or_else(|_| {
                     degraded_incident("harness_failure: engine call failed", start, end)
                 }),
-            None => degraded_incident(
+            TraceDiscovery::NoneFound => degraded_incident(
                 &format!("trace_mode: no trace found for service '{primary}' in window"),
+                start,
+                end,
+            ),
+            TraceDiscovery::Unreachable => degraded_incident(
+                &format!("trace_mode: tempo search unreachable for service '{primary}'"),
                 start,
                 end,
             ),
@@ -139,28 +144,43 @@ pub async fn run_suite(
     Ok(())
 }
 
+/// Outcome of looking for a representative trace for an experiment.
+enum TraceDiscovery {
+    /// A trace id was found.
+    Found(String),
+    /// Tempo was reachable but had no matching trace in the window.
+    NoneFound,
+    /// Tempo could not be reached (distinct from "no trace exists" so the
+    /// degraded incident's note doesn't misreport infra outages as empty data).
+    Unreachable,
+}
+
 /// Finds a representative trace id for `service` within `[start, end]`,
-/// preferring a trace that contains an error span. Returns `None` if Tempo has
-/// no matching trace (or is unreachable).
+/// preferring a trace that contains an error span.
 async fn discover_trace_id(
     tempo: &TempoClient,
     service: &str,
     start: DateTime<Utc>,
     end: DateTime<Utc>,
-) -> Option<String> {
+) -> TraceDiscovery {
     let (s, e) = (start.timestamp(), end.timestamp());
     let error_q = format!("{{ resource.service.name = \"{service}\" && status = error }}");
     if let Ok(ids) = tempo.search_traces(&error_q, s, e, 1).await {
         if let Some(id) = ids.into_iter().next() {
-            return Some(id);
+            return TraceDiscovery::Found(id);
         }
     }
+    // Fall back to any trace touching the service. This second query also tells
+    // us whether Tempo is actually reachable (vs. the error query just being a
+    // transient miss).
     let any_q = format!("{{ resource.service.name = \"{service}\" }}");
-    tempo
-        .search_traces(&any_q, s, e, 5)
-        .await
-        .ok()
-        .and_then(|ids| ids.into_iter().next())
+    match tempo.search_traces(&any_q, s, e, 5).await {
+        Ok(ids) => match ids.into_iter().next() {
+            Some(id) => TraceDiscovery::Found(id),
+            None => TraceDiscovery::NoneFound,
+        },
+        Err(_) => TraceDiscovery::Unreachable,
+    }
 }
 
 fn chrono_from_ns(ns: i64) -> DateTime<Utc> {
@@ -317,12 +337,19 @@ pub async fn run_from_files(args: EvalRunArgs) -> anyhow::Result<()> {
     let invocation = AnomalyInvocation::load(&args.invocation_path)?;
 
     // Engine config: load from the --config TOML when present, else defaults.
-    // (The file is optional; a missing path falls back to defaults rather than
-    // failing the run.)
+    // A *missing* file falls back to defaults (the flag is optional); a parse
+    // error or any other read error (permissions, etc.) is surfaced rather than
+    // silently defaulting, so the recorded config_hash always matches reality.
     let cfg = match std::fs::read_to_string(&args.config_path) {
         Ok(text) => toml::from_str(&text)
             .map_err(|e| anyhow::anyhow!("parse config {}: {e}", args.config_path.display()))?,
-        Err(_) => CorrelationConfig::default(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => CorrelationConfig::default(),
+        Err(e) => {
+            return Err(anyhow::anyhow!(
+                "read config {}: {e}",
+                args.config_path.display()
+            ))
+        }
     };
 
     let tempo_url = std::env::var("TEMPO_URL").unwrap_or("http://tempo:3200".into());
