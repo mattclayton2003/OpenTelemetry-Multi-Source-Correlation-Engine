@@ -2,6 +2,7 @@ use crate::clients::{AccountResp, Adjust, Config, Notify};
 use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use bank_common::errors::{ServiceError, ServiceResult};
 use serde::{Deserialize, Serialize};
+use tracing::Instrument;
 
 #[derive(Debug, Deserialize)]
 pub struct TxReq {
@@ -30,41 +31,61 @@ async fn create(
         .maybe_delay()
         .await;
 
-    // Debit
-    let r = cfg
-        .http
-        .post(format!("{}/accounts/{}/adjust", cfg.accounts_url, req.from))
-        .headers(bank_common::otel::trace_headers())
-        .json(&Adjust { delta: -req.amount })
-        .send()
-        .await
-        .map_err(|e| ServiceError::Internal(anyhow::anyhow!(e)))?;
+    // Debit — wrapped in a CLIENT span so the accounts SERVER span links to it
+    // (header injection must happen inside the span; that's why this is a future
+    // instrumented by the span rather than a bare builder call).
+    let r = async {
+        cfg.http
+            .post(format!("{}/accounts/{}/adjust", cfg.accounts_url, req.from))
+            .headers(bank_common::otel::trace_headers())
+            .json(&Adjust { delta: -req.amount })
+            .send()
+            .await
+    }
+    .instrument(bank_common::otel::client_span(
+        "POST /accounts/:id/adjust",
+        "accounts",
+    ))
+    .await
+    .map_err(|e| ServiceError::Internal(anyhow::anyhow!(e)))?;
     if !r.status().is_success() {
         return Err(ServiceError::BadRequest("debit failed".into()));
     }
     // Credit
-    let r = cfg
-        .http
-        .post(format!("{}/accounts/{}/adjust", cfg.accounts_url, req.to))
-        .headers(bank_common::otel::trace_headers())
-        .json(&Adjust { delta: req.amount })
-        .send()
-        .await
-        .map_err(|e| ServiceError::Internal(anyhow::anyhow!(e)))?;
+    let r = async {
+        cfg.http
+            .post(format!("{}/accounts/{}/adjust", cfg.accounts_url, req.to))
+            .headers(bank_common::otel::trace_headers())
+            .json(&Adjust { delta: req.amount })
+            .send()
+            .await
+    }
+    .instrument(bank_common::otel::client_span(
+        "POST /accounts/:id/adjust",
+        "accounts",
+    ))
+    .await
+    .map_err(|e| ServiceError::Internal(anyhow::anyhow!(e)))?;
     if !r.status().is_success() {
         return Err(ServiceError::BadRequest("credit failed".into()));
     }
     // Notify
-    let _ = cfg
-        .http
-        .post(format!("{}/notify", cfg.notifications_url))
-        .headers(bank_common::otel::trace_headers())
-        .json(&Notify {
-            user: req.to.clone(),
-            message: format!("received {}", req.amount),
-        })
-        .send()
-        .await;
+    let _ = async {
+        cfg.http
+            .post(format!("{}/notify", cfg.notifications_url))
+            .headers(bank_common::otel::trace_headers())
+            .json(&Notify {
+                user: req.to.clone(),
+                message: format!("received {}", req.amount),
+            })
+            .send()
+            .await
+    }
+    .instrument(bank_common::otel::client_span(
+        "POST /notify",
+        "notifications",
+    ))
+    .await;
     let id = uuid::Uuid::now_v7().to_string();
     Ok((StatusCode::CREATED, Json(TxResp { id, status: "ok" })))
 }
