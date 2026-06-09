@@ -14,10 +14,15 @@ pub struct MockDriver {
 impl FaultDriver for MockDriver {
     async fn apply(&self, spec: &FaultSpec) -> Result<FaultHandle> {
         self.applied.lock().unwrap().push(spec.clone());
-        Ok(FaultHandle { spec: spec.clone(), revert_token: "tok".into() })
+        Ok(FaultHandle {
+            spec: spec.clone(),
+            revert_token: "tok".into(),
+        })
     }
     async fn revert(&self, h: &FaultHandle) -> Result<()> {
-        if self.fail_revert { anyhow::bail!("mock revert failed"); }
+        if self.fail_revert {
+            anyhow::bail!("mock revert failed");
+        }
         self.reverted.lock().unwrap().push(h.revert_token.clone());
         Ok(())
     }

@@ -5,7 +5,17 @@ pub trait Clock: Send + Sync {
 }
 
 pub struct WallClock;
-impl Clock for WallClock { fn now(&self) -> DateTime<Utc> { Utc::now() } }
+impl Clock for WallClock {
+    fn now(&self) -> DateTime<Utc> {
+        Utc::now()
+    }
+}
 
-pub struct TestClock { pub now: DateTime<Utc> }
-impl Clock for TestClock { fn now(&self) -> DateTime<Utc> { self.now } }
+pub struct TestClock {
+    pub now: DateTime<Utc>,
+}
+impl Clock for TestClock {
+    fn now(&self) -> DateTime<Utc> {
+        self.now
+    }
+}

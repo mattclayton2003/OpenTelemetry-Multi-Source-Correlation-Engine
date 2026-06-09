@@ -12,9 +12,10 @@ impl Drop for OtelGuard {
 }
 
 pub fn init(service_name: &'static str) -> anyhow::Result<OtelGuard> {
-    let resource = Resource::new(vec![
-        opentelemetry::KeyValue::new("service.name", service_name),
-    ]);
+    let resource = Resource::new(vec![opentelemetry::KeyValue::new(
+        "service.name",
+        service_name,
+    )]);
 
     let provider = match std::env::var("OTLP_ENDPOINT") {
         Ok(endpoint) => {
@@ -25,9 +26,7 @@ pub fn init(service_name: &'static str) -> anyhow::Result<OtelGuard> {
             opentelemetry_otlp::new_pipeline()
                 .tracing()
                 .with_exporter(exporter)
-                .with_trace_config(
-                    sdktrace::Config::default().with_resource(resource),
-                )
+                .with_trace_config(sdktrace::Config::default().with_resource(resource))
                 .install_batch(runtime::Tokio)?
         }
         Err(_) => {
