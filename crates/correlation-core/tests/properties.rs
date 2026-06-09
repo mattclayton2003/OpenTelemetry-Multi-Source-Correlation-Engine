@@ -321,10 +321,11 @@ fn arb_suspect() -> impl Strategy<Value = Suspect> {
         -1e9f64..1e9f64,
         -1e9f64..1e9f64,
         -1e9f64..1e9f64,
+        -1e9f64..1e9f64,
         prop::collection::vec(arb_contributor(), 0..4),
     )
         .prop_map(
-            |(rank, service, score, de, da, pw, tm, contributors)| Suspect {
+            |(rank, service, score, de, da, pw, lat, tm, contributors)| Suspect {
                 rank: rank as usize,
                 service,
                 score,
@@ -332,6 +333,7 @@ fn arb_suspect() -> impl Strategy<Value = Suspect> {
                     direct_error_weight: de,
                     direct_anomaly_weight: da,
                     propagated_weight: pw,
+                    direct_latency_weight: lat,
                     temporal_tightness_multiplier: tm,
                     contributors,
                 },

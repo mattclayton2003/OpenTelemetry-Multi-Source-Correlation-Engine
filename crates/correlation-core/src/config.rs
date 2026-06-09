@@ -9,6 +9,11 @@ pub struct CorrelationConfig {
     pub causal_propagation_beta: f64,
     pub causal_propagation_max_depth: u8,
     pub min_baseline_sec: i64,
+    /// A non-error span whose *self-time* (duration minus the time spent in its
+    /// children) exceeds this many milliseconds is treated as latency evidence
+    /// for its service. Self-time isolates the service actually doing the slow
+    /// work from callers merely blocked waiting on a downstream dependency.
+    pub slow_span_self_ms: i64,
 }
 
 impl Default for CorrelationConfig {
@@ -21,6 +26,7 @@ impl Default for CorrelationConfig {
             causal_propagation_beta: 0.5,
             causal_propagation_max_depth: 3,
             min_baseline_sec: 60,
+            slow_span_self_ms: 200,
         }
     }
 }

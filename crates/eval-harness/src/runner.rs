@@ -183,9 +183,18 @@ async fn discover_trace_id(
             return TraceDiscovery::Found(id);
         }
     }
-    // Fall back to any trace touching the service. This second query also tells
-    // us whether Tempo is actually reachable (vs. the error query just being a
-    // transient miss).
+    // Latency faults produce slow-but-successful traces. Target them directly
+    // with a duration filter so the impacted trace isn't missed just because
+    // many fast traces are more recent (Tempo search returns newest-first).
+    let slow_q = format!("{{ resource.service.name = \"{service}\" && duration > 250ms }}");
+    if let Ok(hits) = tempo.search_traces(&slow_q, s, e, 20).await {
+        if let Some(id) = pick_best(hits, service) {
+            return TraceDiscovery::Found(id);
+        }
+    }
+    // Fall back to any trace touching the service. This last query also tells
+    // us whether Tempo is actually reachable (vs. the earlier queries just being
+    // transient misses).
     let any_q = format!("{{ resource.service.name = \"{service}\" }}");
     match tempo.search_traces(&any_q, s, e, 20).await {
         Ok(hits) if hits.is_empty() => TraceDiscovery::NoneFound,

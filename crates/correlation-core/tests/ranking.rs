@@ -1,9 +1,67 @@
 use chrono::Utc;
+use correlation_core::backend::SpanStatus;
 use correlation_core::config::CorrelationConfig;
 use correlation_core::graph::builder::EvidenceGraph;
 use correlation_core::graph::edges::{Edge, EdgeKind};
 use correlation_core::graph::nodes::Node;
 use correlation_core::ranking::scoring::rank_suspects;
+
+/// A latency fault produces slow but successful (status=OK) spans. The service
+/// doing the slow work (high self-time) must be blamed; a caller merely blocked
+/// waiting on it (self-time ~0) must not be.
+#[test]
+fn latency_evidence_blames_the_slow_worker_not_the_blocked_caller() {
+    let mut g = EvidenceGraph::new();
+    let svc_slow = g.add_node(Node::service("slow".into()));
+    let svc_caller = g.add_node(Node::service("caller".into()));
+    // caller span: 800ms total, but almost all of it is spent in its child.
+    let caller_span = g.add_node(Node::Span {
+        id: "c1".into(),
+        service: "caller".into(),
+        operation: "call".into(),
+        status: SpanStatus::Ok,
+        start: Utc::now(),
+        duration_ms: 800,
+        parent: None,
+        status_message: None,
+    });
+    // slow span: 790ms of self-time (no children) — the actual culprit.
+    let slow_span = g.add_node(Node::Span {
+        id: "s1".into(),
+        service: "slow".into(),
+        operation: "work".into(),
+        status: SpanStatus::Ok,
+        start: Utc::now(),
+        duration_ms: 790,
+        parent: Some("c1".into()),
+        status_message: None,
+    });
+    g.add_edge(Edge {
+        from: caller_span,
+        to: svc_caller,
+        kind: EdgeKind::EmittedBy,
+    });
+    g.add_edge(Edge {
+        from: slow_span,
+        to: svc_slow,
+        kind: EdgeKind::EmittedBy,
+    });
+    // caller -> slow (the caller is the parent of the slow span).
+    g.add_edge(Edge {
+        from: "span:c1".into(),
+        to: "span:s1".into(),
+        kind: EdgeKind::ParentOf,
+    });
+
+    let suspects = rank_suspects(&g, &CorrelationConfig::default(), None);
+    assert_eq!(suspects[0].service, "slow", "slow worker should rank first");
+    assert!(suspects[0].direct_latency > 0.0);
+    let caller = suspects.iter().find(|s| s.service == "caller").unwrap();
+    assert_eq!(
+        caller.direct_latency, 0.0,
+        "caller's self-time is below threshold; it should not be blamed"
+    );
+}
 
 #[test]
 fn service_with_error_span_outranks_clean_service() {

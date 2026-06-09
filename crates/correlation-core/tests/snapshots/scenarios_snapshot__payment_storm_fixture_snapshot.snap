@@ -3,7 +3,7 @@ source: crates/correlation-core/tests/scenarios_snapshot.rs
 expression: redacted
 ---
 {
-  "config_hash": "sha256:1d3fd81f13eac45f",
+  "config_hash": "sha256:ba822320c04f2a23",
   "elapsed_ms": 0,
   "engine_version": "0.1.0",
   "incident_id": "<redacted>",
@@ -82,6 +82,7 @@ expression: redacted
         ],
         "direct_anomaly_weight": 0.0,
         "direct_error_weight": 1.85,
+        "direct_latency_weight": 0.0,
         "propagated_weight": 0.906,
         "temporal_tightness_multiplier": 1.0
       },
@@ -100,6 +101,7 @@ expression: redacted
         ],
         "direct_anomaly_weight": 0.0,
         "direct_error_weight": 1.812,
+        "direct_latency_weight": 0.0,
         "propagated_weight": 0.0,
         "temporal_tightness_multiplier": 1.0
       },
