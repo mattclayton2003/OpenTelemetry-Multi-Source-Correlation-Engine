@@ -25,4 +25,4 @@ chrono      = { workspace = true }
 [dev-dependencies]
 testcontainers = "0.21"
 once_cell      = "1"
-tower          = "0.4"
+tower          = "0.5"
