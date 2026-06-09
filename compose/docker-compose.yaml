@@ -9,8 +9,14 @@ services:
       interval: 2s
       retries: 30
 
+  # Stand-in for the notifications service's downstream "mail" dependency.
+  # notifications sends via an HTTP POST (through the toxiproxy `smtp-fake`
+  # proxy, so chaos faults still apply); whoami answers 200 on any method/path,
+  # so the call succeeds in steady state. (Previously this was smtp4dev, whose
+  # web API 404s a POST to /api/messages -> every notify span was status=ERROR.)
   smtp-fake:
-    image: rnwood/smtp4dev:latest
+    image: traefik/whoami
+    command: ["--port", "80"]
     ports: ["3000:80"]
 
   auth:
