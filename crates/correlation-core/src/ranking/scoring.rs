@@ -23,6 +23,7 @@ pub fn rank_suspects(
                     direct_error: 0.0,
                     direct_anomaly: 0.0,
                     propagated: 0.0,
+                    direct_latency: 0.0,
                     temporal_mult: 1.0,
                     contributors: vec![],
                 },
@@ -79,6 +80,55 @@ pub fn rank_suspects(
                 .push(("propagated_from".into(), "graph".into(), w));
         }
     }
+    // Latency evidence: a non-error span whose *self-time* (its duration minus
+    // the time spent in its children) exceeds the threshold is evidence that
+    // its service is the one actually doing slow work — not a caller merely
+    // blocked waiting on a slow downstream (whose self-time is ~0). This lets
+    // the engine identify the culprit of a pure-latency fault, where every span
+    // is status=OK and so carries no error evidence.
+    {
+        use crate::backend::SpanStatus;
+        let mut span_dur: HashMap<&str, i64> = HashMap::new();
+        let mut spans: Vec<(&str, &str, i64, bool)> = vec![]; // (id, service, dur, is_error)
+        for (id, n) in g.nodes() {
+            if let Node::Span {
+                service,
+                duration_ms,
+                status,
+                ..
+            } = n
+            {
+                span_dur.insert(id.as_str(), *duration_ms);
+                spans.push((
+                    id.as_str(),
+                    service.as_str(),
+                    *duration_ms,
+                    matches!(status, SpanStatus::Error),
+                ));
+            }
+        }
+        let mut child_dur: HashMap<&str, i64> = HashMap::new();
+        for e in g.edges() {
+            if e.kind == EdgeKind::ParentOf {
+                if let Some(d) = span_dur.get(e.to.as_str()) {
+                    *child_dur.entry(e.from.as_str()).or_default() += *d;
+                }
+            }
+        }
+        for (id, service, dur, is_error) in spans {
+            if is_error {
+                continue; // already captured as direct_error
+            }
+            let self_ms = dur - child_dur.get(id).copied().unwrap_or(0);
+            if self_ms > cfg.slow_span_self_ms {
+                let w = self_ms as f64 / 1000.0;
+                if let Some(s) = services.get_mut(service) {
+                    s.direct_latency += w;
+                    s.contributors.push(("slow_span".into(), id.to_string(), w));
+                }
+            }
+        }
+    }
     if let Some(t0) = anomaly_start {
         for (_id, n) in g.nodes() {
             if let Node::MetricAnomaly {
@@ -98,7 +148,8 @@ pub fn rank_suspects(
     let mut out: Vec<ScoredSuspect> = services
         .into_values()
         .map(|mut s| {
-            s.score = (s.direct_error + s.direct_anomaly + s.propagated) * s.temporal_mult;
+            s.score = (s.direct_error + s.direct_anomaly + s.propagated + s.direct_latency)
+                * s.temporal_mult;
             s
         })
         .collect();

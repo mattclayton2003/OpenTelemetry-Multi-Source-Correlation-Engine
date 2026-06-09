@@ -120,6 +120,7 @@ impl Engine {
                         direct_error_weight: s.direct_error,
                         direct_anomaly_weight: s.direct_anomaly,
                         propagated_weight: s.propagated,
+                        direct_latency_weight: s.direct_latency,
                         temporal_tightness_multiplier: s.temporal_mult,
                         contributors: s
                             .contributors
@@ -256,6 +257,7 @@ impl Engine {
                     direct_error_weight: 0.0,
                     direct_anomaly_weight: hit.z_score,
                     propagated_weight: 0.0,
+                    direct_latency_weight: 0.0,
                     temporal_tightness_multiplier: 1.0,
                     contributors: vec![Contributor {
                         kind: "metric_anomaly".into(),

@@ -80,6 +80,10 @@ pub struct EvidenceBreakdown {
     pub direct_error_weight: f64,
     pub direct_anomaly_weight: f64,
     pub propagated_weight: f64,
+    /// Evidence from anomalously high span self-time (latency faults). Defaults
+    /// to 0 so documents written before this field round-trip unchanged.
+    #[serde(default)]
+    pub direct_latency_weight: f64,
     pub temporal_tightness_multiplier: f64,
     pub contributors: Vec<Contributor>,
 }
