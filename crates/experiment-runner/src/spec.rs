@@ -18,13 +18,17 @@ pub struct Experiment {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct Load { pub generator: String, pub profile: Vec<bank_loadgen::profile::Stage> }
+pub struct Load {
+    pub generator: String,
+    pub profile: Vec<bank_loadgen::profile::Stage>,
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Fault {
     pub at_sec: u32,
     pub until_sec: u32,
-    #[serde(flatten)] pub spec: chaos::driver::FaultSpec,
+    #[serde(flatten)]
+    pub spec: chaos::driver::FaultSpec,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

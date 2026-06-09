@@ -15,7 +15,9 @@ impl FailureModes {
             cold_start_first_n: g("COLD_START_FIRST_N").and_then(|v| v.parse().ok()),
         }
     }
-    pub fn latency_ms(&self) -> Option<u64> { self.latency_ms_env }
+    pub fn latency_ms(&self) -> Option<u64> {
+        self.latency_ms_env
+    }
     pub fn should_inject_error(&self) -> bool {
         match self.error_rate_env {
             Some(r) if r > 0.0 => rand::thread_rng().gen::<f64>() < r,

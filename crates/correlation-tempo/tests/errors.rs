@@ -1,13 +1,17 @@
+use correlation_core::backend::{BackendError, TelemetryBackend};
 use correlation_tempo::TempoClient;
-use correlation_core::backend::{TelemetryBackend, BackendError};
-use wiremock::{MockServer, Mock, ResponseTemplate, matchers::path_regex};
+use wiremock::{
+    matchers::{path, path_regex},
+    Mock, MockServer, ResponseTemplate,
+};
 
 #[tokio::test]
 async fn empty_on_404() {
     let server = MockServer::start().await;
     Mock::given(path_regex(r"/api/traces/.*"))
         .respond_with(ResponseTemplate::new(404))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = TempoClient::new(server.uri());
     let res = c.fetch_trace("abc".into()).await;
     assert!(matches!(res, Err(BackendError::Empty)));
@@ -25,7 +29,8 @@ async fn unreachable_on_garbage_json() {
     let server = MockServer::start().await;
     Mock::given(path_regex(r"/api/traces/.*"))
         .respond_with(ResponseTemplate::new(200).set_body_string("{not json"))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = TempoClient::new(server.uri());
     let res = c.fetch_trace("abc".into()).await;
     assert!(matches!(res, Err(BackendError::Unreachable))); // RetryPolicy maps parse failures here
@@ -48,10 +53,56 @@ async fn parses_minimal_otlp_response() {
     });
     Mock::given(path_regex(r"/api/traces/.*"))
         .respond_with(ResponseTemplate::new(200).set_body_json(body))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = TempoClient::new(server.uri());
     let spans = c.fetch_trace("trace1".into()).await.unwrap();
     assert_eq!(spans.len(), 1);
     assert_eq!(spans[0].service, "auth");
     assert_eq!(spans[0].operation, "POST /login");
+}
+
+#[tokio::test]
+async fn search_traces_extracts_trace_ids() {
+    let server = MockServer::start().await;
+    let body = serde_json::json!({
+        "traces": [
+            { "traceID": "aaa", "rootServiceName": "auth" },
+            { "traceID": "bbb", "rootServiceName": "auth" }
+        ]
+    });
+    Mock::given(path("/api/search"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .mount(&server)
+        .await;
+    let c = TempoClient::new(server.uri());
+    let ids = c
+        .search_traces("{ resource.service.name = \"auth\" }", 0, 100, 5)
+        .await
+        .unwrap();
+    assert_eq!(ids, vec!["aaa".to_string(), "bbb".to_string()]);
+}
+
+#[tokio::test]
+async fn search_traces_empty_when_no_matches() {
+    let server = MockServer::start().await;
+    Mock::given(path("/api/search"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "traces": [] })))
+        .mount(&server)
+        .await;
+    let c = TempoClient::new(server.uri());
+    let ids = c.search_traces("{}", 0, 100, 5).await.unwrap();
+    assert!(ids.is_empty());
+}
+
+#[tokio::test]
+async fn search_traces_unreachable_on_error_status() {
+    let server = MockServer::start().await;
+    Mock::given(path("/api/search"))
+        .respond_with(ResponseTemplate::new(500))
+        .mount(&server)
+        .await;
+    let c = TempoClient::new(server.uri());
+    let res = c.search_traces("{}", 0, 100, 5).await;
+    assert!(matches!(res, Err(BackendError::Unreachable)));
 }

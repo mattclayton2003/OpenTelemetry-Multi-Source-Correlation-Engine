@@ -1,7 +1,9 @@
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct Profile { pub stages: Vec<Stage> }
+pub struct Profile {
+    pub stages: Vec<Stage>,
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Stage {
