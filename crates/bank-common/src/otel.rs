@@ -105,6 +105,19 @@ pub fn trace_headers() -> axum::http::HeaderMap {
     headers
 }
 
+/// A CLIENT-kind span for an outgoing call to `peer_service`. Instrument the
+/// request future with it (and call [`trace_headers`] inside) so the downstream
+/// SERVER span links to it — the CLIENT→SERVER pairing is what populates
+/// Zipkin's service dependency graph.
+pub fn client_span(operation: &str, peer_service: &str) -> tracing::Span {
+    tracing::info_span!(
+        "client",
+        otel.kind = "client",
+        otel.name = operation,
+        peer.service = peer_service,
+    )
+}
+
 /// Axum middleware that extracts the incoming `traceparent` and runs the
 /// request inside a server span parented to it, so every service's work for a
 /// request shares one trace_id. Attach with
@@ -116,6 +129,7 @@ pub async fn propagate_trace_context(
     let parent = global::get_text_map_propagator(|p| p.extract(&HeaderExtractor(req.headers())));
     let span = tracing::info_span!(
         "http.server",
+        otel.kind = "server",
         otel.name = %format!("{} {}", req.method(), req.uri().path()),
         http.method = %req.method(),
         http.path = %req.uri().path(),
