@@ -1,14 +1,14 @@
+use chrono::Utc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use chrono::Utc;
 
 #[derive(Default)]
 pub struct Bucket {
     pub success: AtomicU64,
     pub four_xx: AtomicU64,
     pub five_xx: AtomicU64,
-    pub error:   AtomicU64,
-    pub p99_ms:  AtomicU64,
+    pub error: AtomicU64,
+    pub p99_ms: AtomicU64,
 }
 
 #[derive(Clone, Default)]

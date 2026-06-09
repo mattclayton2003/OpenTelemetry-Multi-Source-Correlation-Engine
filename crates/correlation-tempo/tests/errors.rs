@@ -1,13 +1,14 @@
+use correlation_core::backend::{BackendError, TelemetryBackend};
 use correlation_tempo::TempoClient;
-use correlation_core::backend::{TelemetryBackend, BackendError};
-use wiremock::{MockServer, Mock, ResponseTemplate, matchers::path_regex};
+use wiremock::{matchers::path_regex, Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
 async fn empty_on_404() {
     let server = MockServer::start().await;
     Mock::given(path_regex(r"/api/traces/.*"))
         .respond_with(ResponseTemplate::new(404))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = TempoClient::new(server.uri());
     let res = c.fetch_trace("abc".into()).await;
     assert!(matches!(res, Err(BackendError::Empty)));
@@ -25,7 +26,8 @@ async fn unreachable_on_garbage_json() {
     let server = MockServer::start().await;
     Mock::given(path_regex(r"/api/traces/.*"))
         .respond_with(ResponseTemplate::new(200).set_body_string("{not json"))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = TempoClient::new(server.uri());
     let res = c.fetch_trace("abc".into()).await;
     assert!(matches!(res, Err(BackendError::Unreachable))); // RetryPolicy maps parse failures here
@@ -48,7 +50,8 @@ async fn parses_minimal_otlp_response() {
     });
     Mock::given(path_regex(r"/api/traces/.*"))
         .respond_with(ResponseTemplate::new(200).set_body_json(body))
-        .mount(&server).await;
+        .mount(&server)
+        .await;
     let c = TempoClient::new(server.uri());
     let spans = c.fetch_trace("trace1".into()).await.unwrap();
     assert_eq!(spans.len(), 1);

@@ -1,7 +1,7 @@
-pub mod scoring;
-pub mod report;
-pub mod sweep;
-pub mod runner;
-pub mod db;
-pub mod coverage;
 pub mod canary;
+pub mod coverage;
+pub mod db;
+pub mod report;
+pub mod runner;
+pub mod scoring;
+pub mod sweep;
