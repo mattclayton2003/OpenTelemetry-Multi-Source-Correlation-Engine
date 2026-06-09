@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: docker compose -f compose/docker-compose.yaml --profile research up -d --build
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2

@@ -17,7 +17,7 @@ jobs:
       PROPTEST_CASES: "64"
       PROPTEST_MAX_SHRINK_ITERS: "256"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       # `--test properties` selects the proptest *binary*; a bare `properties`
@@ -33,7 +33,7 @@ jobs:
       PROPTEST_CASES: "4096"
       PROPTEST_MAX_SHRINK_ITERS: "8192"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       # `--test properties` selects the proptest *binary*; a bare `properties`
