@@ -1,39 +1,21 @@
-### AL ###
-#Template for AL projects for Dynamics 365 Business Central
-#launch.json folder
-.vscode/
-#Cache folder
-.alcache/
-#Symbols folder
-.alpackages/
-#Snapshots folder
-.snapshots/
-#Testing Output folder
-.output/
-#Extension App-file
-*.app
-#Rapid Application Development File
-rad.json
-#Translation Base-file
-*.g.xlf
-#License-files
-*.bclicense
-*.flf
-#Test results file
-TestResults.xml
+# Rust build output
+/target
 
-# Swarm runtime artifacts (logs, runtime state)
+# Generated run artifacts: eval scores, scorecards, per-incident RCA reports
+/results
+
+# Runtime state — SQLite DBs (labels, incidents, eval_runs), mounted into containers
 /data
 
-/target
-/results
+# Snapshot-test scratch
 *.snap.new
+
+# macOS / IDE local config
 .DS_Store
-
-# IDE local config
 .idea/
+.vscode/
 
-# Ruflo runtime state (memory.db, coordination, vectors)
+# Ruflo / swarm runtime state (memory.db, coordination, vectors)
 .swarm/
 .claude-flow/
 ruvector.db
