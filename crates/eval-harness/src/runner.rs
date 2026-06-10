@@ -95,6 +95,7 @@ pub async fn run_suite(
         score_and_record(
             ctx,
             &eval_run_id,
+            &tag,
             exp_id,
             "trace",
             &ic_trace,
@@ -126,6 +127,7 @@ pub async fn run_suite(
         score_and_record(
             ctx,
             &eval_run_id,
+            &tag,
             exp_id,
             "anomaly",
             &ic_anom,
@@ -277,9 +279,29 @@ async fn persist_incident(
     Ok(())
 }
 
+/// Writes the human-readable markdown render of an incident to
+/// `results/<tag>/incidents/<experiment>-<mode>.md`, alongside the JSON that
+/// `persist_incident` stores in the incidents DB. This is the grounded
+/// artifact an LLM (`corr explain`) or a human reads — best-effort, so a
+/// non-writable `results/` mount degrades the run to a warning, never a failure.
+fn write_incident_md(tag: &str, exp_id: &str, mode: &str, ic: &IncidentContext) {
+    let dir = format!("results/{tag}/incidents");
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        eprintln!("warn: could not create {dir}: {e}");
+        return;
+    }
+    let path = format!("{dir}/{exp_id}-{mode}.md");
+    let md = correlation_core::schema::renderer_md::render_md(ic);
+    if let Err(e) = std::fs::write(&path, md) {
+        eprintln!("warn: could not write {path}: {e}");
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn score_and_record(
     ctx: &EvalContext,
     eval_run_id: &str,
+    tag: &str,
     exp_id: &str,
     mode: &str,
     ic: &IncidentContext,
@@ -287,6 +309,7 @@ async fn score_and_record(
     class: &str,
 ) -> anyhow::Result<()> {
     persist_incident(ctx, exp_id, ic).await?;
+    write_incident_md(tag, exp_id, mode, ic);
 
     let suspects: Vec<String> = ic.suspects.iter().map(|s| s.service.clone()).collect();
     let r1 = recall_at_k(&suspects, primary, 1);

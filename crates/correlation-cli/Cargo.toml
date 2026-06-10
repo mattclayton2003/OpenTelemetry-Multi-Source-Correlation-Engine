@@ -17,6 +17,7 @@ clap        = { version = "4", features = ["derive", "env"] }
 serde_json  = { workspace = true }
 anyhow      = { workspace = true }
 chrono      = { workspace = true }
+reqwest     = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }
