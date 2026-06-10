@@ -3,11 +3,16 @@
 #
 # Narrated arc: healthy system -> inject a real 800ms latency fault on the
 # notifications dependency -> watch the telemetry react -> hand a slow trace to
-# the engine, which auto-pinpoints the culprit -> reproducible eval coda.
+# the engine, which auto-pinpoints the culprit -> an LLM narrates that finding
+# in plain English -> reproducible eval coda.
 # The injected fault is always removed on exit (even on Ctrl-C).
 #
 #   ./scripts/demo.sh                 # interactive: pauses between acts
 #   DEMO_NOPAUSE=1 ./scripts/demo.sh  # run straight through (e.g. to rehearse)
+#
+# Act 5 (LLM narration) is optional: it runs only if ANTHROPIC_API_KEY is set
+# and the `corr` CLI is built (cargo build -p correlation-cli); otherwise it is
+# skipped with a note. Override the model with CORR_EXPLAIN_MODEL.
 #
 # Prereq: the research stack is up:
 #   docker compose -f compose/docker-compose.yaml --profile research up -d
@@ -31,9 +36,17 @@ open_url(){
 }
 
 LOAD_PID=""
+IC_JSON="$(mktemp -t corr-incident.XXXXXX)"   # act 4 saves the incident here; act 5 explains it
+# Locate a `corr` CLI that supports `explain` (prefer an optimized build, but
+# skip a stale binary built before the subcommand existed).
+CORR=""
+for c in "$REPO/target/release/corr" "$REPO/target/debug/corr"; do
+  if [ -x "$c" ] && "$c" explain --help >/dev/null 2>&1; then CORR="$c"; break; fi
+done
 cleanup(){
   [ -n "$LOAD_PID" ] && kill "$LOAD_PID" 2>/dev/null
   curl -s -X DELETE "http://$TOXI/proxies/smtp-fake/toxics/smtp-latency" >/dev/null 2>&1
+  rm -f "$IC_JSON"
   printf '\n'; dim "cleaned up — fault removed, load stopped"
 }
 trap cleanup EXIT INT TERM
@@ -68,14 +81,14 @@ dim "load generator running (pid $LOAD_PID)"
 sleep 8
 
 # ---------------------------------------------------------------- 1: healthy
-act "1/4  Healthy system"
+act "1/5  Healthy system"
 echo "   notifications p99 = $(p99 notifications) ms    transactions p99 = $(p99 transactions) ms"
 echo "   The service dependency graph (transactions → accounts, notifications):"
 open_url "http://$ZIPKIN/zipkin/dependency"
 pause
 
 # ---------------------------------------------------------------- 2: fault
-act "2/4  Inject an 800ms SMTP-latency fault on the notifications dependency"
+act "2/5  Inject an 800ms SMTP-latency fault on the notifications dependency"
 curl -s -X POST "http://$TOXI/proxies/smtp-fake/toxics" \
   -d '{"name":"smtp-latency","type":"latency","stream":"downstream","toxicity":1.0,"attributes":{"latency":800,"jitter":150}}' >/dev/null
 echo "   Grafana 'Services' dashboard — watch notifications p99 spike (/notify):"
@@ -86,7 +99,7 @@ printf '\n'
 pause
 
 # ---------------------------------------------------------------- 3: trace
-act "3/4  Find a slow trace caused by the fault"
+act "3/5  Find a slow trace caused by the fault"
 TID=""
 for _ in $(seq 1 15); do
   TID=$(curl -s "http://$TEMPO/api/search" \
@@ -107,11 +120,12 @@ fi
 pause
 
 # ---------------------------------------------------------------- 4: engine
-act "4/4  Hand the trace to the correlation engine — no human looks at it"
+act "4/5  Hand the trace to the correlation engine — no human looks at it"
 if [ -n "$TID" ]; then
+  # Capture the incident document so act 5 can hand the *same* doc to the LLM.
   curl -s -X POST "http://$ENGINE/correlate/trace" -H 'content-type: application/json' \
-    -d "{\"trace_id\":\"$TID\"}" \
-    | python3 -c '
+    -d "{\"trace_id\":\"$TID\"}" > "$IC_JSON" 2>/dev/null
+  python3 -c '
 import sys, json
 d = json.load(sys.stdin)
 print("   services in incident:", ", ".join(s["name"] for s in d["services"]))
@@ -122,9 +136,26 @@ for s in d["suspects"]:
         s["rank"], s["service"], s["score"],
         eb.get("direct_latency_weight", 0.0), eb.get("direct_error_weight", 0.0)))
 print("   elapsed:", d["elapsed_ms"], "ms")
-' 2>/dev/null || echo "   (engine call failed)"
+' < "$IC_JSON" 2>/dev/null || echo "   (engine call failed)"
   echo "   → #1 is notifications, on self-time latency evidence: the slow worker,"
   echo "     not the caller blocked waiting on it."
+fi
+pause
+
+# ---------------------------------------------------------------- 5: explain
+act "5/5  Plain-English root cause — hand the incident to an LLM"
+if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+  dim "   (set ANTHROPIC_API_KEY to narrate this incident via the Claude API — skipping)"
+elif [ -z "$CORR" ]; then
+  dim "   (build the CLI first — cargo build -p correlation-cli — skipping)"
+elif [ ! -s "$IC_JSON" ]; then
+  dim "   (no incident document captured in act 4 — skipping)"
+else
+  echo "   corr explain feeds that same grounded incident document to Claude and asks"
+  echo "   for a root-cause / blast-radius / remediation narrative:"
+  echo
+  "$CORR" explain --incident "$IC_JSON" 2>&1 | sed 's/^/   /' \
+    || dim "   (explain call failed)"
 fi
 pause
 
