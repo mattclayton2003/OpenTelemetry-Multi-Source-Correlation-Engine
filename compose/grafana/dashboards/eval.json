@@ -3,6 +3,7 @@
   "editable": true,
   "graphTooltip": 0,
   "id": null,
+  "uid": "eval",
   "title": "OTel Correlation Engine - Eval Scores",
   "tags": ["otel", "correlation-engine", "eval"],
   "templating": { "list": [] },
