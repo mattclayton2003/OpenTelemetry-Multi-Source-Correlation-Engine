@@ -223,7 +223,9 @@ Configuration is hashed into every run for reproducibility.
 ```sh
 docker compose -f compose/docker-compose.yaml --profile research up -d
 ./scripts/demo.sh                  # interactive (pauses between acts)
-DEMO_NOPAUSE=1 ./scripts/demo.sh   # straight through
+DEMO_NOPAUSE=1 ./scripts/demo.sh   # straight through (rehearsal)
+DEMO_EXPLAIN=1 ./scripts/demo.sh   # add an "under the hood" note at each act
+DEMO_NOOPEN=1  ./scripts/demo.sh   # print URLs but don't open the browser
 ```
 
 The demo walks a five-act arc: healthy system → inject an 800 ms SMTP-latency
