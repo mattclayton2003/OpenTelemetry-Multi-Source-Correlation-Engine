@@ -4,6 +4,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
+  "uid": "services",
   "title": "OTel Correlation Engine - Services",
   "tags": ["otel", "correlation-engine"],
   "templating": { "list": [] },

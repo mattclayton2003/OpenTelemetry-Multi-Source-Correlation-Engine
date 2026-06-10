@@ -22,6 +22,13 @@ bold(){ printf '\033[1m%s\033[0m\n' "$*"; }
 dim(){  printf '\033[2m%s\033[0m\n' "$*"; }
 act(){  printf '\n\033[1;36m%s\033[0m\n' "$*"; }
 pause(){ [ -n "${DEMO_NOPAUSE:-}" ] && return 0; printf '\033[33m▶ press enter…\033[0m '; read -r _ || true; }
+# print a URL and (unless DEMO_NOOPEN) open it in the default browser
+open_url(){
+  printf '   \033[34m↗ open %s\033[0m\n' "$1"
+  [ -n "${DEMO_NOOPEN:-}" ] && return 0
+  if command -v open >/dev/null 2>&1; then open "$1" >/dev/null 2>&1 || true
+  elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$1" >/dev/null 2>&1 || true; fi
+}
 
 LOAD_PID=""
 cleanup(){
@@ -63,17 +70,19 @@ sleep 8
 # ---------------------------------------------------------------- 1: healthy
 act "1/4  Healthy system"
 echo "   notifications p99 = $(p99 notifications) ms    transactions p99 = $(p99 transactions) ms"
-echo "   Zipkin → Dependencies ($ZIPKIN/zipkin/dependency): transactions → accounts, notifications"
-echo "   Grafana → 'Services' dashboard: flat p99, no errors"
+echo "   The service dependency graph (transactions → accounts, notifications):"
+open_url "http://$ZIPKIN/zipkin/dependency"
 pause
 
 # ---------------------------------------------------------------- 2: fault
 act "2/4  Inject an 800ms SMTP-latency fault on the notifications dependency"
 curl -s -X POST "http://$TOXI/proxies/smtp-fake/toxics" \
   -d '{"name":"smtp-latency","type":"latency","stream":"downstream","toxicity":1.0,"attributes":{"latency":800,"jitter":150}}' >/dev/null
+echo "   Grafana 'Services' dashboard — watch notifications p99 spike (/notify):"
+open_url "http://$GRAFANA/d/services?from=now-15m&to=now&refresh=5s"
 printf '   notifications p99 climbing: '
 for _ in $(seq 1 8); do sleep 4; printf '%sms ' "$(p99 notifications)"; done
-printf '\n   Watch Grafana: notifications p99 spikes; "p99 by operation" shows it is /notify\n'
+printf '\n'
 pause
 
 # ---------------------------------------------------------------- 3: trace
@@ -91,9 +100,9 @@ done
 if [ -z "$TID" ]; then
   echo "   (no slow trace yet — let load run a few more seconds)"
 else
-  echo "   trace: $TID"
-  echo "   Open it in Zipkin/Tempo: the long span is notifications:/notify;"
-  echo "   transactions:create is long only because it is *waiting* on it."
+  echo "   trace: $TID  — the long span is notifications:/notify; transactions:create"
+  echo "   is long only because it is *waiting* on it:"
+  open_url "http://$ZIPKIN/zipkin/traces/$TID"
 fi
 pause
 
@@ -124,9 +133,9 @@ act "Reproducible evaluation — the research artifact"
 ( cd "$REPO" && docker compose -f compose/docker-compose.yaml exec -T eval-harness \
     eval --eval /data/eval_runs.db report --tag suite-baseline 2>/dev/null ) \
   || dim "(no eval yet — run: eval ... run --suite '/experiments/*.yaml' --tag suite-baseline)"
-if [ -f "$REPO/results/scorecard.html" ] && command -v open >/dev/null 2>&1; then
-  open "$REPO/results/scorecard.html"; echo "   opened results/scorecard.html"
-fi
+echo "   The eval scores in Grafana (composite by scenario × mode):"
+open_url "http://$GRAFANA/d/eval"
+[ -f "$REPO/results/scorecard.html" ] && open_url "file://$REPO/results/scorecard.html"
 
 act "Done — removing the fault."
 # cleanup() runs via the EXIT trap
