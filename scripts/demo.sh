@@ -9,6 +9,8 @@
 #
 #   ./scripts/demo.sh                 # interactive: pauses between acts
 #   DEMO_NOPAUSE=1 ./scripts/demo.sh  # run straight through (e.g. to rehearse)
+#   DEMO_EXPLAIN=1 ./scripts/demo.sh  # print an "under the hood" note at each act
+#   DEMO_NOOPEN=1  ./scripts/demo.sh  # print URLs but don't open the browser
 #
 # Act 5 (LLM narration) is optional: it runs only if ANTHROPIC_API_KEY is set
 # and the `corr` CLI is built (cargo build -p correlation-cli); otherwise it is
@@ -27,6 +29,8 @@ bold(){ printf '\033[1m%s\033[0m\n' "$*"; }
 dim(){  printf '\033[2m%s\033[0m\n' "$*"; }
 act(){  printf '\n\033[1;36m%s\033[0m\n' "$*"; }
 pause(){ [ -n "${DEMO_NOPAUSE:-}" ] && return 0; printf '\033[33m▶ press enter…\033[0m '; read -r _ || true; }
+# DEMO_EXPLAIN=1: print an "under the hood" note (one dim line per argument).
+xplain(){ [ -n "${DEMO_EXPLAIN:-}" ] || return 0; local l; for l in "$@"; do printf '\033[2m   ┊ %s\033[0m\n' "$l"; done; }
 # print a URL and (unless DEMO_NOOPEN) open it in the default browser
 open_url(){
   printf '   \033[34m↗ open %s\033[0m\n' "$1"
@@ -82,6 +86,9 @@ sleep 8
 
 # ---------------------------------------------------------------- 1: healthy
 act "1/5  Healthy system"
+xplain "p99 is read live from Prometheus spanmetrics: histogram_quantile(0.99) over" \
+       "duration_milliseconds_bucket, which the OTel collector derives from spans." \
+       "The Zipkin dependency graph is built from SERVER/CLIENT span kinds."
 echo "   notifications p99 = $(p99 notifications) ms    transactions p99 = $(p99 transactions) ms"
 echo "   The service dependency graph (transactions → accounts, notifications):"
 open_url "http://$ZIPKIN/zipkin/dependency"
@@ -89,6 +96,9 @@ pause
 
 # ---------------------------------------------------------------- 2: fault
 act "2/5  Inject an 800ms SMTP-latency fault on the notifications dependency"
+xplain "Toxiproxy sits between notifications and its SMTP server; the toxic delays" \
+       "every reply by 800ms (±150ms jitter). No code changes — a real network fault," \
+       "exactly what a slow downstream dependency looks like in production."
 curl -s -X POST "http://$TOXI/proxies/smtp-fake/toxics" \
   -d '{"name":"smtp-latency","type":"latency","stream":"downstream","toxicity":1.0,"attributes":{"latency":800,"jitter":150}}' >/dev/null
 echo "   Grafana 'Services' dashboard — watch notifications p99 spike (/notify):"
@@ -100,6 +110,9 @@ pause
 
 # ---------------------------------------------------------------- 3: trace
 act "3/5  Find a slow trace caused by the fault"
+xplain "TraceQL filters on duration>500ms to catch the slow-but-successful trace" \
+       "(latency fault, no errors). In the trace, the caller's span fully CONTAINS" \
+       "the dependency's span — it is long only because it is waiting. Which is at fault?"
 TID=""
 for _ in $(seq 1 15); do
   TID=$(curl -s "http://$TEMPO/api/search" \
@@ -121,6 +134,10 @@ pause
 
 # ---------------------------------------------------------------- 4: engine
 act "4/5  Hand the trace to the correlation engine — no human looks at it"
+xplain "The engine computes each span's self-time = duration − Σ(children durations)." \
+       "notifications:/notify has ~735ms of self-time; the caller's self-time is ~0 (its" \
+       "duration is almost all the child call). So latency blame lands on the worker, not" \
+       "the blocked caller — answering act 3's question mechanically, in ~half a second."
 if [ -n "$TID" ]; then
   # Capture the incident document so act 5 can hand the *same* doc to the LLM.
   curl -s -X POST "http://$ENGINE/correlate/trace" -H 'content-type: application/json' \
@@ -144,6 +161,10 @@ pause
 
 # ---------------------------------------------------------------- 5: explain
 act "5/5  Plain-English root cause — hand the incident to an LLM"
+xplain "corr explain sends the same incident document to the Claude API (one Messages" \
+       "call, adaptive thinking). The system prompt tells the model to cite only the" \
+       "evidence already in the document — the engine decides the root cause; the LLM" \
+       "only translates it into prose. Run with --dry-run to see the exact prompt."
 SAMPLE="$REPO/docs/sample-corr-explain.md"
 if [ -n "${ANTHROPIC_API_KEY:-}" ] && [ -n "$CORR" ] && [ -s "$IC_JSON" ]; then
   # Live: feed this run's incident document to the Claude API.
@@ -166,6 +187,10 @@ pause
 
 # ---------------------------------------------------------------- coda
 act "Reproducible evaluation — the research artifact"
+xplain "Not the live incident — the standing benchmark: the engine scored against every" \
+       "labelled chaos experiment in both modes (recall@k, precision@k, completeness," \
+       "composite), reproducible from a hashed config. Trace mode is strong; anomaly" \
+       "mode is where the current work is."
 ( cd "$REPO" && docker compose -f compose/docker-compose.yaml exec -T eval-harness \
     eval --eval /data/eval_runs.db report --tag suite-baseline 2>/dev/null ) \
   || dim "(no eval yet — run: eval ... run --suite '/experiments/*.yaml' --tag suite-baseline)"
