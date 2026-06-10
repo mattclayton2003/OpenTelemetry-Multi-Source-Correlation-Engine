@@ -133,7 +133,18 @@ pub async fn propagate_trace_context(
         otel.name = %format!("{} {}", req.method(), req.uri().path()),
         http.method = %req.method(),
         http.path = %req.uri().path(),
+        // Declared empty so we can stamp the span's OTel status from the
+        // response below. tracing-opentelemetry maps `otel.status_code` to the
+        // span status, which the collector's spanmetrics connector turns into
+        // `calls_total{status_code="STATUS_CODE_ERROR"}` — the error-rate signal.
+        otel.status_code = tracing::field::Empty,
+        http.status_code = tracing::field::Empty,
     );
     span.set_parent(parent);
-    next.run(req).instrument(span).await
+    let resp = next.run(req).instrument(span.clone()).await;
+    span.record("http.status_code", resp.status().as_u16());
+    if resp.status().is_server_error() {
+        span.record("otel.status_code", "ERROR");
+    }
+    resp
 }

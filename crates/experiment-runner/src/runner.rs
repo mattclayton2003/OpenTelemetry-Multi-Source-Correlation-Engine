@@ -70,6 +70,19 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
     let started_ns = started.timestamp_nanos_opt().unwrap_or(0);
     let base = tokio::time::Instant::now();
 
+    // Drive the experiment's load profile concurrently with the fault schedule.
+    // Without this, faults inject against an idle system and produce no request
+    // spans or metrics to detect (the runner previously ignored `load`). Each
+    // stage honours its own `start_offset_sec`/`duration_sec` relative to now.
+    let load_stats = bank_loadgen::stats::Stats::default();
+    let load_handles: Vec<_> = exp
+        .load
+        .profile
+        .iter()
+        .cloned()
+        .map(|stage| tokio::spawn(bank_loadgen::runner::run_stage(stage, load_stats.clone())))
+        .collect();
+
     // Merged, time-ordered schedule of apply/revert events. This injects each
     // fault at its own `at_sec` and reverts it at its own `until_sec`, so faults
     // may overlap or nest correctly (the previous code applied faults at
@@ -111,6 +124,12 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
     }
     // Hold the experiment open until duration_sec from t=0 (no-op if already past).
     tokio::time::sleep_until(base + Duration::from_secs(exp.duration_sec as u64)).await;
+
+    // Ensure the load stages have finished before recovery detection and before
+    // this run returns, so generated traffic can't bleed into the next experiment.
+    for h in load_handles {
+        let _ = h.await;
+    }
 
     // Recovery detection. Only require signals that are actually observable in
     // this environment: the load-gen 5xx signal depends on a stats file that
