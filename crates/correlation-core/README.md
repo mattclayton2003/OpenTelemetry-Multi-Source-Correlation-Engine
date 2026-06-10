@@ -19,5 +19,5 @@ Integration tests use `MockBackend` (gated behind `test-helpers` feature):
 
 ## Schema
 
-See `docs/superpowers/specs/2026-05-23-otel-correlation-engine-design.md`
+See `docs/design-spec.md`
 §4 for the `IncidentContext` schema (v1.0.0).

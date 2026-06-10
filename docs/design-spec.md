@@ -822,7 +822,7 @@ Every-push target: < 5 min. Nightly: < 60 min.
 
 ### TDD discipline
 
-Edge cases from §6 are written as failing tests first. `superpowers:test-driven-development` applies for the engine's correctness-critical paths (engine, anomaly detectors, ranking, recovery-signal state machine). Service CRUD endpoints and CLI wiring do not require strict TDD.
+Edge cases from §6 are written as failing tests first. Test-driven development applies for the engine's correctness-critical paths (engine, anomaly detectors, ranking, recovery-signal state machine). Service CRUD endpoints and CLI wiring do not require strict TDD.
 
 ---
 
@@ -885,8 +885,8 @@ OpenTelemetry-Multi-Source-Correlation-Engine/
 │
 ├── tools/gen-fixture/
 │
-└── docs/superpowers/specs/
-    └── 2026-05-23-otel-correlation-engine-design.md
+└── docs/
+    └── design-spec.md
 ```
 
 ### Workspace `Cargo.toml`

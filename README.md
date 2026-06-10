@@ -10,8 +10,8 @@ notifications) wired to Tempo/Loki/Prometheus, a library of labelled chaos
 experiments, and an eval harness that scores the engine against ground truth.
 Built as a pre-PhD research artifact for AI-Ops correlation work.
 
-- Design spec: [`docs/superpowers/specs/2026-05-23-otel-correlation-engine-design.md`](docs/superpowers/specs/2026-05-23-otel-correlation-engine-design.md)
-- Implementation plan: [`docs/superpowers/plans/2026-05-23-otel-correlation-engine.md`](docs/superpowers/plans/2026-05-23-otel-correlation-engine.md)
+- Design spec: [`docs/design-spec.md`](docs/design-spec.md)
+- Implementation plan: [`docs/implementation-plan.md`](docs/implementation-plan.md)
 - Operations guide: [`docs/operations.md`](docs/operations.md)
 - Live demo walkthrough: [`docs/demo-walkthrough.md`](docs/demo-walkthrough.md)
 

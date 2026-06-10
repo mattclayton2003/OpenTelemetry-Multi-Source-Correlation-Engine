@@ -1,11 +1,10 @@
 
 # OTel Multi-Source Correlation Engine Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a Rust observability sandbox (4 banking microservices + Tempo/Loki/Prom) and a correlation engine that produces structured `IncidentContext` documents, plus a chaos experiment runner that emits a labeled ground-truth dataset and an evaluation harness that scores the engine against it.
 
-**Architecture:** Monorepo + Cargo workspace + Docker Compose. Three planes: application (4 axum services), telemetry (single OTel collector → Tempo/Loki/Prom), research (engine + runner + harness). Engine is a pure library (`correlation-core`) with three backend adapters (Tempo/Loki/Prom) and two thin shells (CLI, HTTP). Approach B: evidence graph + deterministic scoring. See `docs/superpowers/specs/2026-05-23-otel-correlation-engine-design.md` for the full design.
+**Architecture:** Monorepo + Cargo workspace + Docker Compose. Three planes: application (4 axum services), telemetry (single OTel collector → Tempo/Loki/Prom), research (engine + runner + harness). Engine is a pure library (`correlation-core`) with three backend adapters (Tempo/Loki/Prom) and two thin shells (CLI, HTTP). Approach B: evidence graph + deterministic scoring. See `docs/design-spec.md` for the full design.
 
 **Tech Stack:** Rust 1.78 · Tokio · axum · sqlx (SQLite + Postgres) · `opentelemetry-rust` 0.24 · `tracing` · `wiremock` · `insta` · `proptest` · `testcontainers` · Docker Compose · Tempo · Loki · Prometheus · Toxiproxy · Pumba.
 
@@ -77,7 +76,6 @@ Conventional commits, already evident in every commit step in this plan:
 | `compose:`        | Docker Compose changes            |
 | `data:`           | Fixture / experiment YAML changes |
 
-A `Co-Authored-By:` trailer is appended when commits are made via the `commit-commands:commit` skill or by an agentic worker.
 
 ## CI pipeline overview
 
@@ -262,9 +260,9 @@ git commit -m "ci: add baseline unit workflow (fmt + clippy + test)"
 A Rust observability sandbox plus a correlation engine that produces
 structured incident context documents from OpenTelemetry data.
 
-See [`docs/superpowers/specs/2026-05-23-otel-correlation-engine-design.md`](docs/superpowers/specs/2026-05-23-otel-correlation-engine-design.md)
+See [`docs/design-spec.md`](docs/design-spec.md)
 for the design and
-[`docs/superpowers/plans/2026-05-23-otel-correlation-engine.md`](docs/superpowers/plans/2026-05-23-otel-correlation-engine.md)
+[`docs/implementation-plan.md`](docs/implementation-plan.md)
 for the implementation plan.
 
 ## Quickstart
@@ -302,7 +300,7 @@ git commit -m "docs: point README at spec and plan"
 - [ ] No new `SystemTime::now()` call inside `correlation-core` (determinism)
 - [ ] New dependencies justified below
 - [ ] If a new scenario YAML was added: `ground_truth` complete and `failure_class` in the spec enum
-- [ ] Plan task checkboxes ticked in `docs/superpowers/plans/2026-05-23-otel-correlation-engine.md`
+- [ ] Plan task checkboxes ticked in `docs/implementation-plan.md`
 
 ## Notes for reviewer
 <!-- Anything non-obvious: design tradeoff, deferred TODO, snapshot intent, etc. -->
@@ -6763,13 +6761,3 @@ A pass through the plan against the spec. Findings and fixes recorded below.
 **4. Ambiguity:**
 - "Adapter retry budget independent across adapters" (spec §6) — current implementation has `RetryPolicy` per `TempoClient`/`LokiClient`/`PromClient` instance; each retry budget is per call, per adapter. ✓ matches spec.
 - Sample-message count per log batch: spec says "up to 3 distinct + most recent"; current `build_from` simply takes the first 3. Flagged here so engineer adjusts if the snapshot tests need it.
-
-# Execution Handoff
-
-Plan complete and saved to `docs/superpowers/plans/2026-05-23-otel-correlation-engine.md`. Two execution options:
-
-**1. Subagent-Driven (recommended)** — fresh subagent per task, review between tasks, fast iteration.
-
-**2. Inline Execution** — execute tasks in this session using `superpowers:executing-plans`, batch execution with checkpoints for review.
-
-Which approach?

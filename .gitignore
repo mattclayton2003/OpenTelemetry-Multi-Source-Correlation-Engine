@@ -15,7 +15,7 @@
 .idea/
 .vscode/
 
-# Ruflo / swarm runtime state (memory.db, coordination, vectors)
+# Machine-local tooling/runtime state (not part of the project)
 .swarm/
 .claude-flow/
 ruvector.db

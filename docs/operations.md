@@ -83,12 +83,3 @@ documented but not yet implemented as of `v0.1.0`.)
 `main` requires `unit`, `snapshot`, `property` checks green for merge.
 e2e and reproduce are nightly and informational. Branch protection
 config is in [`docs/operations/branch-protection.md`](operations/branch-protection.md).
-
-## Swarm orchestration
-
-The build itself ran on a ruflo swarm — every commit you see was either
-a worker dispatch or Architect cleanup. Audit trail:
-
-- `docs/superpowers/swarm/escalations.md` — defects caught + fixes
-- `docs/superpowers/swarm/quarantine.md` — worker bails + branch quarantine
-- Tags `phase-0-bootstrap` through `phase-8-...` — each phase's checkpoint
