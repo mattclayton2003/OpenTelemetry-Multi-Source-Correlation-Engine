@@ -255,3 +255,34 @@ nightly/dispatch (they need the live stack).
 
 See [`docs/operations.md`](docs/operations.md) for adding scenarios, sweeping
 parameters, interpreting reports, and refreshing fixtures.
+
+---
+
+## Glossary
+
+### Engine & output
+
+| Term | Meaning |
+|---|---|
+| **`IncidentContext`** | The engine's product — one structured (JSON) document per incident: ranked suspects, their evidence, the span tree, log batches, metric anomalies, a timeline, and notes. Rendered to markdown (`render_md`) or narrated by `corr explain`. |
+| **Evidence graph** | The per-incident graph the engine builds. Nodes: spans, services, log batches, metric anomalies. Edges: emitted-by, parent-of, caused-by. Scoring runs over this structure, so the reasoning is inspectable. |
+| **Suspect** | A service the engine implicates, carrying a rank, a score, and an evidence breakdown. |
+| **Evidence breakdown** | The itemized weights behind a suspect's score: error, anomaly, latency, and propagated contributions, plus the specific spans/logs/metrics that contributed. |
+| **Self-time** | A span's own work = its duration − the time spent waiting on its children. Latency is scored on self-time so the engine blames the slow **worker**, not a caller merely blocked waiting on it. |
+| **Propagation** | Blame flowing backward along causal edges (decayed by distance) so an upstream dependency's fault surfaces on the right service. |
+| **Trace mode / anomaly mode** | The two ways to trigger the engine: from a specific **trace**, or from a metric **anomaly** `(metric, service, window)`. |
+| **spanmetrics** | Metrics the OTel collector derives from spans — e.g. p99 latency and `calls_total` (with a `status_code` label). The engine's metric and error-rate signals come from these. |
+
+### Evaluation
+
+| Term | Meaning |
+|---|---|
+| **Ground truth** | The labels declared in each experiment YAML: the truly-faulted service, expected blast radius, clean services, and failure class. The yardstick the engine is scored against. |
+| **Failure class** | The fault category (e.g. `dependency_latency`, `dependency_outage`, `network_partition`), which selects the metric anomaly mode invokes for that experiment. |
+| **Blast radius** | Services expected to be affected *downstream* of the faulted one. A "correct" top-k pick is the faulted service **∪** its blast radius. |
+| **Clean services** | Services expected to be unaffected; ranking one in the top-k counts as a false positive. |
+| **recall@k** | Did the truly-faulted service appear in the engine's top-k suspects? (1 if yes, 0 if no — averaged across experiments.) |
+| **precision@k** | Of the top-k suspects, what fraction are "real" (faulted ∪ blast radius)? |
+| **Completeness** | How much of the expected evidence the incident actually gathered — the average of trace coverage, error-log coverage, anomaly coverage, and tree integrity. |
+| **Composite** | The single weighted headline score per incident (0–1, higher is better), combining recall@3, precision@3, completeness, latency, and clean-service false positives. Weights live in `configs/scoring.toml`. |
+| **Config hash** | A hash of the engine + scoring configuration recorded with every run, so any score is reproducible from a known setup. |
