@@ -144,18 +144,23 @@ pause
 
 # ---------------------------------------------------------------- 5: explain
 act "5/5  Plain-English root cause — hand the incident to an LLM"
-if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
-  dim "   (set ANTHROPIC_API_KEY to narrate this incident via the Claude API — skipping)"
-elif [ -z "$CORR" ]; then
-  dim "   (build the CLI first — cargo build -p correlation-cli — skipping)"
-elif [ ! -s "$IC_JSON" ]; then
-  dim "   (no incident document captured in act 4 — skipping)"
-else
+SAMPLE="$REPO/docs/sample-corr-explain.md"
+if [ -n "${ANTHROPIC_API_KEY:-}" ] && [ -n "$CORR" ] && [ -s "$IC_JSON" ]; then
+  # Live: feed this run's incident document to the Claude API.
   echo "   corr explain feeds that same grounded incident document to Claude and asks"
   echo "   for a root-cause / blast-radius / remediation narrative:"
   echo
   "$CORR" explain --incident "$IC_JSON" 2>&1 | sed 's/^/   /' \
     || dim "   (explain call failed)"
+elif [ -f "$SAMPLE" ]; then
+  # Offline: show a recorded sample so the demo runs without an API key/billing.
+  dim "   (no ANTHROPIC_API_KEY — showing a recorded sample of corr explain output;"
+  dim "    set the key + build the corr CLI to narrate this run's incident live)"
+  echo
+  # Strip the HTML provenance comment, then indent under the act.
+  sed '/<!--/,/-->/d' "$SAMPLE" | sed '/./,$!d' | sed 's/^/   /'
+else
+  dim "   (set ANTHROPIC_API_KEY and build the corr CLI to narrate this incident via Claude)"
 fi
 pause
 
