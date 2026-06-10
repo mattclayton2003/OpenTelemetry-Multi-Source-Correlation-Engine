@@ -5,6 +5,13 @@
 # service_name -> service so the engine can select the faulted service (the
 # `service` field below) from the per-service result. The same query works for
 # any service; the engine filters by `service`.
+#
+# Error classes (dependency_outage, network_partition, error_rate_spike) use a
+# per-service error rate derived from the same spanmetrics `calls_total`:
+# `rate(calls_total{status_code="STATUS_CODE_ERROR"}[1m])`, OR-anchored to
+# `rate(calls_total[1m]) * 0` so every service has a 0 baseline the z-score can
+# spike from (without the anchor the error series only exists once the first
+# error fires, leaving no baseline to detect against).
 
 [dependency_latency]
 metric  = 'label_replace(histogram_quantile(0.99, sum by (le, service_name) (rate(duration_milliseconds_bucket[1m]))), "service", "$1", "service_name", "(.+)")'
@@ -13,7 +20,7 @@ window_pre_sec  = 0
 window_post_sec = 120
 
 [dependency_outage]
-metric  = "http_requests_total{status=~\"5..\"}"
+metric  = 'label_replace(sum by (service_name) (rate(calls_total{status_code="STATUS_CODE_ERROR"}[1m])) or sum by (service_name) (rate(calls_total[1m])) * 0, "service", "$1", "service_name", "(.+)")'
 service = "accounts"
 window_pre_sec  = 0
 window_post_sec = 120
@@ -43,13 +50,13 @@ window_pre_sec  = 0
 window_post_sec = 120
 
 [network_partition]
-metric  = "http_requests_total{status=~\"5..\"}"
+metric  = 'label_replace(sum by (service_name) (rate(calls_total{status_code="STATUS_CODE_ERROR"}[1m])) or sum by (service_name) (rate(calls_total[1m])) * 0, "service", "$1", "service_name", "(.+)")'
 service = "accounts"
 window_pre_sec  = 0
 window_post_sec = 120
 
 [error_rate_spike]
-metric  = "http_requests_total{status=~\"5..\"}"
+metric  = 'label_replace(sum by (service_name) (rate(calls_total{status_code="STATUS_CODE_ERROR"}[1m])) or sum by (service_name) (rate(calls_total[1m])) * 0, "service", "$1", "service_name", "(.+)")'
 service = "transactions"
 window_pre_sec  = 0
 window_post_sec = 120

@@ -4,7 +4,7 @@
 metrics = ["http_request_duration_seconds:p99", "smtp_send_latency_seconds:p99"]
 
 [dependency_outage]
-metrics = ["http_requests_total{status=~\"5..\"}"]
+metrics = ['label_replace(sum by (service_name) (rate(calls_total{status_code="STATUS_CODE_ERROR"}[1m])) or sum by (service_name) (rate(calls_total[1m])) * 0, "service", "$1", "service_name", "(.+)")']
 
 [db_connection_exhaustion]
 metrics = ["accounts_db_pool_size", "http_request_duration_seconds:p99"]
@@ -19,10 +19,10 @@ metrics = ["container_memory_rss"]
 metrics = ["up", "process_start_time_seconds"]
 
 [network_partition]
-metrics = ["http_requests_total{status=~\"5..\"}", "http_request_duration_seconds:p99"]
+metrics = ['label_replace(sum by (service_name) (rate(calls_total{status_code="STATUS_CODE_ERROR"}[1m])) or sum by (service_name) (rate(calls_total[1m])) * 0, "service", "$1", "service_name", "(.+)")']
 
 [error_rate_spike]
-metrics = ["http_requests_total{status=~\"5..\"}"]
+metrics = ['label_replace(sum by (service_name) (rate(calls_total{status_code="STATUS_CODE_ERROR"}[1m])) or sum by (service_name) (rate(calls_total[1m])) * 0, "service", "$1", "service_name", "(.+)")']
 
 [cold_start]
 metrics = ["http_request_duration_seconds:p99"]
