@@ -19,3 +19,6 @@
 .swarm/
 .claude-flow/
 ruvector.db
+
+# Personal presenter notes — kept local, not published
+docs/demo-script.md
