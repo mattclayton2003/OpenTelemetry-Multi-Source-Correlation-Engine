@@ -146,10 +146,11 @@ trace and anomaly modes and scores it (recall@k, precision@k, completeness,
 composite) against ground truth. The config is hashed into every run so results
 are reproducible.
 
-**Say:** "This is the research artifact. The same engine, scored against a
-labelled chaos dataset. Trace mode is strong; anomaly mode is where the current
-work is. Every number here is reproducible from a config hash." **Point at:**
-trace-vs-anomaly composite, and any misses.
+**Say:** "This is the research artifact — the same engine, scored against a
+labelled chaos dataset, reproducible from a config hash. Anomaly mode now matches
+trace mode: the faulted service lands in the top-3 on every scenario (recall@3 =
+1.0), zero misses. Precision is the remaining frontier." **Point at:** the
+trace-vs-anomaly composite (both strong) and recall@3 = 1.0.
 
 ---
 

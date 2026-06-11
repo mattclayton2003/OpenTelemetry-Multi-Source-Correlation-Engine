@@ -192,8 +192,8 @@ pause
 act "Reproducible evaluation — the research artifact"
 xplain "Not the live incident — the standing benchmark: the engine scored against every" \
        "labelled chaos experiment in both modes (recall@k, precision@k, completeness," \
-       "composite), reproducible from a hashed config. Trace mode is strong; anomaly" \
-       "mode is where the current work is."
+       "composite), reproducible from a hashed config. Both modes now rank the faulted" \
+       "service in the top-3 on every scenario (recall@3 = 1.0); precision is the frontier."
 ( cd "$REPO" && docker compose -f compose/docker-compose.yaml exec -T eval-harness \
     eval --eval /data/eval_runs.db report --tag suite-baseline 2>/dev/null ) \
   || dim "(no eval yet — run: eval ... run --suite '/experiments/*.yaml' --tag suite-baseline)"

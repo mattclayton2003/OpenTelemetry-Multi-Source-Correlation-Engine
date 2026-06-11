@@ -40,6 +40,13 @@ def render() -> str:
             "SELECT eval_run_id, tag, started_at, config_hash FROM eval_runs"
         ).fetchall()
     }
+    # Export only the most-recent run. Otherwise the eval dashboard's instant
+    # queries (bare `eval_composite`, no tag filter) overlay every historical
+    # tag and same-scenario bars overwrite nondeterministically. A research
+    # dashboard wants "the latest eval", and this keeps the live view honest.
+    if runs:
+        latest_id = max(runs, key=lambda k: runs[k]["started_at"] or 0)
+        runs = {latest_id: runs[latest_id]}
     # run-level metadata
     out.append("# TYPE eval_run_started_seconds gauge")
     out.append("# TYPE eval_run_info gauge")

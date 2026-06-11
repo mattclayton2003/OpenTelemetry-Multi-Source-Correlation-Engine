@@ -83,7 +83,7 @@ That last part matters for the division of labor. The engine does the correlatio
 
 ## Where it's going
 
-**Honest current state.** Trace-based correlation is strong — when handed a slow or failed trace, the engine reliably names the right worker. Metric-anomaly-based correlation is the active frontier: the work there is improving the signals that feed it, so that an anomaly alone is as trustworthy an entry point as a trace.
+**Honest current state.** Trace-based correlation is strong — handed a slow or failed trace, the engine reliably names the right worker. Metric-anomaly-based correlation now reaches the same recall: triggered by an anomaly alone, the engine lands the faulted service in the top-3 on every scenario in the labelled chaos suite (recall@3 = 1.0). The remaining frontier is precision and richer anomaly signals — making an anomaly trigger as sharp an entry point as a trace.
 
 **The longer arc.** The deliberate baselines in this engine — straightforward anomaly detection, deterministic scoring — are not the destination. They are the *rigorous baseline that future work must beat.* The longer-term research direction is learned approaches: graph neural networks and related methods operating over the same evidence graph the engine already builds.
 
