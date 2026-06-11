@@ -61,6 +61,13 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
         tracing::info!("dry_run: validated YAML and connectivity");
         return Ok(exp.id.clone());
     }
+
+    // Start from a clean toxiproxy state: clear any toxic a prior experiment
+    // may have failed to revert, so faults can't bleed across experiments.
+    // Best-effort — a real toxiproxy outage surfaces when a fault is applied.
+    if let Err(e) = driver.toxi.reset().await {
+        eprintln!("warn: toxiproxy reset at experiment start failed (continuing): {e}");
+    }
     tokio::time::sleep(Duration::from_secs(exp.warmup_sec as u64)).await;
 
     // t=0 for the experiment timeline. Every fault `at_sec`/`until_sec` and
@@ -109,9 +116,25 @@ pub async fn run_file(path: &Path, pool: &SqlitePool, dry_run: bool) -> anyhow::
     for (t, ev) in events {
         tokio::time::sleep_until(base + Duration::from_secs(t as u64)).await;
         match ev {
-            Ev::Apply(i) => {
-                handles[i] = Some(driver.apply(&exp.faults[i].spec).await?);
-            }
+            Ev::Apply(i) => match driver.apply(&exp.faults[i].spec).await {
+                Ok(h) => handles[i] = Some(h),
+                Err(e) => {
+                    // A fault failed to inject (e.g. a pumba scenario when pumba
+                    // isn't available). Revert any faults already applied and
+                    // stop the load before bailing, so this experiment can't
+                    // leave a toxic active or traffic running that would
+                    // contaminate whatever the caller runs next.
+                    for applied in handles.iter().flatten() {
+                        if let Err(re) = driver.revert(applied).await {
+                            eprintln!("warn: revert during error cleanup failed: {re}");
+                        }
+                    }
+                    for lh in &load_handles {
+                        lh.abort();
+                    }
+                    return Err(e);
+                }
+            },
             Ev::Revert(i) => {
                 if let Some(h) = handles[i].take() {
                     if let Err(e) = driver.revert(&h).await {

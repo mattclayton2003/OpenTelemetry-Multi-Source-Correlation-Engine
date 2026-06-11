@@ -37,10 +37,23 @@ pub async fn run_suite(
     //    may contain experiments from previous runs).
     let mut ran_ids: Vec<String> = Vec::new();
     for path in &yaml_paths {
-        ran_ids.push(experiment_runner::runner::run_file(path, &ctx.labels_db, false).await?);
+        // Skip (don't abort) an experiment whose fault couldn't be injected —
+        // e.g. a pumba-based scenario when pumba isn't enabled in this stack.
+        // Aborting the whole suite on one unavailable driver would throw away
+        // every other experiment's results; a skipped experiment is simply not
+        // scored (you can't measure detection of a fault that never happened).
+        match experiment_runner::runner::run_file(path, &ctx.labels_db, false).await {
+            Ok(id) => ran_ids.push(id),
+            Err(e) => {
+                eprintln!("warn: skipping experiment {} — {e}", path.display());
+            }
+        }
     }
     ran_ids.sort();
     ran_ids.dedup();
+    if ran_ids.is_empty() {
+        anyhow::bail!("no experiments ran successfully (all faults failed to inject?)");
+    }
 
     // 2. Settle for telemetry to land
     tokio::time::sleep(std::time::Duration::from_secs(ctx.settle_sec)).await;

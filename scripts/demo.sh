@@ -72,6 +72,9 @@ for hp in "$TX/health" "$NOTIF/health" "$ENGINE/healthz"; do
     exit 1
   fi
 done
+# Start from a clean fault state (clear any toxic a prior eval run may have left)
+# so act 2's injection can't collide with a stale toxic.
+curl -s -X POST "http://$TOXI/reset" -o /dev/null 2>&1
 curl -s -o /dev/null -X POST "http://$ACC/accounts" -H 'content-type: application/json' -d '{"id":"a1","owner":"alice"}'
 curl -s -o /dev/null -X POST "http://$ACC/accounts" -H 'content-type: application/json' -d '{"id":"a2","owner":"bob"}'
 
